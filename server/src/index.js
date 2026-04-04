@@ -4,6 +4,7 @@ import cors from 'cors';
 import path from 'path';
 import { fileURLToPath } from 'url';
 
+import { runMigrations } from './lib/db.js';
 import authRouter from './routes/auth.js';
 import colorsRouter from './routes/colors.js';
 import appointmentsRouter from './routes/appointments.js';
@@ -51,6 +52,7 @@ app.use((err, _req, res, _next) => {
   res.status(500).json({ error: 'Internal server error' });
 });
 
-app.listen(PORT, () => {
+app.listen(PORT, async () => {
   console.log(`Naily server running on http://localhost:${PORT}`);
+  await runMigrations();
 });
