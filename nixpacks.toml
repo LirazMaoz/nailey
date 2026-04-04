@@ -1,13 +1,14 @@
 [phases.setup]
-aptPkgs = ["nodejs", "npm", "curl"]
+nixPkgs = ["nodejs_20"]
+
+[phases.install]
 cmds = [
-  "npm install -g npm@latest"
+  "npm install --prefix server",
+  "npm install --prefix client"
 ]
 
 [phases.build]
 cmds = [
-  "npm install --prefix server",
-  "npm install --prefix client",
   "npm run build --prefix client"
 ]
 
