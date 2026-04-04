@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { useParams } from 'react-router-dom';
+import { useParams, useNavigate, Link } from 'react-router-dom';
 import { api } from '../lib/api.js';
 import ColorSwatch from '../components/ColorSwatch.jsx';
 
@@ -32,6 +32,20 @@ const STEPS = ['תאריך', 'שעה', 'צבע', 'פרטים', 'אישור'];
 
 export default function BookingPage() {
   const { techId } = useParams();
+  const navigate = useNavigate();
+
+  // Client auth state
+  const [clientUser, setClientUser] = useState(() => {
+    try {
+      const stored = localStorage.getItem('naily_client_user');
+      return stored ? JSON.parse(stored) : null;
+    } catch {
+      return null;
+    }
+  });
+  const [clientToken] = useState(() => localStorage.getItem('naily_client_token') || null);
+  // null = not decided yet, true = proceed, false = go to login
+  const [authDecision, setAuthDecision] = useState(clientUser ? true : null);
 
   const [step, setStep] = useState(0);
   const [selectedDate, setSelectedDate] = useState(null);
@@ -68,22 +82,33 @@ export default function BookingPage() {
       .then((data) => setColors(Array.isArray(data) ? data : []));
   }, [techId]);
 
+  const handleClientLogout = () => {
+    localStorage.removeItem('naily_client_token');
+    localStorage.removeItem('naily_client_user');
+    setClientUser(null);
+    setAuthDecision(null);
+  };
+
   const handleConfirm = async () => {
-    if (!clientName.trim() || !clientPhone.trim()) {
+    if (!clientUser && (!clientName.trim() || !clientPhone.trim())) {
       return setError('יש למלא שם ומספר טלפון');
     }
     setLoading(true);
     setError('');
     try {
-      const result = await api.post('/api/appointments', {
+      const body = {
         techId,
-        clientName: clientName.trim(),
-        clientPhone: clientPhone.trim(),
+        clientName: clientUser ? clientUser.name : clientName.trim(),
+        clientPhone: clientUser ? (clientUser.phone || clientPhone.trim()) : clientPhone.trim(),
         colorId: selectedColor.id,
         date: dateToISO(selectedDate),
         time: selectedTime,
         bookedBy: 'client',
-      });
+      };
+      if (clientToken && clientUser) {
+        body.clientToken = clientToken;
+      }
+      const result = await api.post('/api/appointments', body);
       setConfirmed(result.appointment);
       setStep(4);
     } catch (err) {
@@ -93,10 +118,38 @@ export default function BookingPage() {
     }
   };
 
+  // Auth decision screen
+  if (authDecision === null) {
+    return (
+      <div dir="rtl" className="min-h-screen bg-card-gradient flex flex-col items-center justify-center px-4">
+        <div className="w-full max-w-[430px] flex flex-col gap-5 text-center">
+          <div className="text-5xl">💅</div>
+          <h1 className="text-2xl font-extrabold text-purple-deeper">קביעת תור</h1>
+          <p className="text-gray-500 text-sm">רוצה לשמור את היסטוריית התורים שלך?</p>
+          <div className="flex flex-col gap-3">
+            <Link
+              to={`/client/login?redirect=back`}
+              className="w-full py-3 rounded-xl font-bold text-white text-center block"
+              style={{ background: 'linear-gradient(135deg, #f8a5c2, #c56cd6)' }}
+            >
+              התחברי לחשבון
+            </Link>
+            <button
+              onClick={() => setAuthDecision(true)}
+              className="w-full py-3 rounded-xl font-semibold text-purple-700 border-2 border-purple-200 bg-white"
+            >
+              המשך ללא התחברות
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   // Success screen
   if (step === 4 && confirmed) {
     return (
-      <div className="min-h-screen bg-card-gradient flex flex-col items-center justify-center px-6 text-center">
+      <div dir="rtl" className="min-h-screen bg-card-gradient flex flex-col items-center justify-center px-6 text-center">
         <div className="text-6xl mb-4">💅</div>
         <h1 className="text-2xl font-extrabold text-purple-deeper mb-2">התור נקבע!</h1>
         <p className="text-gray-600 mb-6">
@@ -104,7 +157,7 @@ export default function BookingPage() {
         </p>
         <div className="card w-full max-w-sm text-right">
           <div className="flex flex-col gap-2">
-            <Row label="שם" value={confirmed.clients?.name || clientName} />
+            <Row label="שם" value={clientUser?.name || clientName} />
             <Row label="תאריך" value={formatDateHebrew(selectedDate)} />
             <Row label="שעה" value={selectedTime} />
             {selectedColor && (
@@ -118,19 +171,37 @@ export default function BookingPage() {
             )}
           </div>
         </div>
-        <p className="text-xs text-gray-400 mt-6">ניתן לסגור את הדף</p>
+        {clientUser && (
+          <Link
+            to="/client/profile"
+            className="mt-5 text-purple-600 font-semibold underline text-sm"
+          >
+            צפי בהיסטוריית התורים שלך
+          </Link>
+        )}
+        <p className="text-xs text-gray-400 mt-4">ניתן לסגור את הדף</p>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-card-gradient flex flex-col">
+    <div dir="rtl" className="min-h-screen bg-card-gradient flex flex-col">
       {/* Header */}
       <div className="bg-client-gradient text-white text-center py-8 px-6 rounded-b-3xl">
         <div className="text-4xl mb-1">💅</div>
         <h1 className="text-2xl font-extrabold">קביעת תור</h1>
         <p className="text-white/80 text-sm mt-1">Naily</p>
       </div>
+
+      {/* Client welcome banner */}
+      {clientUser && (
+        <div className="mx-4 mt-4 bg-purple-50 border border-purple-200 rounded-2xl px-4 py-3 flex items-center justify-between text-sm">
+          <span className="text-purple-700 font-semibold">ברוכה הבאה, {clientUser.name}! ממשיכים להזמנה</span>
+          <button onClick={handleClientLogout} className="text-gray-400 text-xs underline">
+            יציאה
+          </button>
+        </div>
+      )}
 
       {/* Step indicator */}
       <div className="px-4 pt-5 flex justify-center gap-2">
@@ -265,27 +336,36 @@ export default function BookingPage() {
               )}
             </div>
 
-            <div>
-              <label className="block text-sm font-semibold text-gray-600 mb-1">שם מלא</label>
-              <input
-                type="text"
-                value={clientName}
-                onChange={(e) => setClientName(e.target.value)}
-                className="input-field"
-                placeholder="שם שלך"
-              />
-            </div>
-            <div>
-              <label className="block text-sm font-semibold text-gray-600 mb-1">מספר טלפון</label>
-              <input
-                type="tel"
-                value={clientPhone}
-                onChange={(e) => setClientPhone(e.target.value)}
-                className="input-field"
-                placeholder="050-0000000"
-                dir="ltr"
-              />
-            </div>
+            {clientUser ? (
+              <div className="bg-purple-50 border border-purple-200 rounded-xl px-4 py-3 text-sm text-purple-700">
+                <p className="font-semibold">{clientUser.name}</p>
+                <p className="text-purple-500 text-xs">{clientUser.phone}</p>
+              </div>
+            ) : (
+              <>
+                <div>
+                  <label className="block text-sm font-semibold text-gray-600 mb-1">שם מלא</label>
+                  <input
+                    type="text"
+                    value={clientName}
+                    onChange={(e) => setClientName(e.target.value)}
+                    className="input-field"
+                    placeholder="שם שלך"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-semibold text-gray-600 mb-1">מספר טלפון</label>
+                  <input
+                    type="tel"
+                    value={clientPhone}
+                    onChange={(e) => setClientPhone(e.target.value)}
+                    className="input-field"
+                    placeholder="050-0000000"
+                    dir="ltr"
+                  />
+                </div>
+              </>
+            )}
 
             <button
               onClick={handleConfirm}

@@ -1,5 +1,6 @@
 import { Router } from 'express';
 import { body, validationResult } from 'express-validator';
+import jwt from 'jsonwebtoken';
 import { pool } from '../lib/db.js';
 import { requireAuth } from '../middleware/auth.js';
 import { sendAppointmentSMS } from '../services/sms.js';
@@ -88,7 +89,7 @@ router.post(
     const errors = validationResult(req);
     if (!errors.isEmpty()) return res.status(400).json({ errors: errors.array() });
 
-    const { techId, clientName, clientPhone, colorId, date, time, bookedBy = 'client' } = req.body;
+    const { techId, clientName, clientPhone, colorId, date, time, bookedBy = 'client', clientToken } = req.body;
 
     try {
       // Verify slot is still available
@@ -100,22 +101,38 @@ router.post(
         return res.status(409).json({ error: 'השעה כבר תפוסה' });
       }
 
-      // Upsert client (find by phone + techId)
+      // Determine client_id
       let clientId = null;
-      const { rows: existingClients } = await pool.query(
-        'SELECT id FROM clients WHERE tech_id = $1 AND phone = $2',
-        [techId, clientPhone]
-      );
 
-      if (existingClients.length > 0) {
-        clientId = existingClients[0].id;
-        await pool.query('UPDATE clients SET name = $1 WHERE id = $2', [clientName, clientId]);
-      } else {
-        const { rows: newClient } = await pool.query(
-          'INSERT INTO clients (tech_id, name, phone) VALUES ($1, $2, $3) RETURNING id',
-          [techId, clientName, clientPhone]
+      if (clientToken) {
+        // Authenticated client booking
+        try {
+          const payload = jwt.verify(clientToken, process.env.JWT_SECRET);
+          if (payload.role === 'client') {
+            clientId = payload.id;
+          }
+        } catch {
+          // Invalid token — fall through to upsert by phone
+        }
+      }
+
+      if (!clientId) {
+        // Upsert client (find by phone + techId)
+        const { rows: existingClients } = await pool.query(
+          'SELECT id FROM clients WHERE tech_id = $1 AND phone = $2',
+          [techId, clientPhone]
         );
-        clientId = newClient[0].id;
+
+        if (existingClients.length > 0) {
+          clientId = existingClients[0].id;
+          await pool.query('UPDATE clients SET name = $1 WHERE id = $2', [clientName, clientId]);
+        } else {
+          const { rows: newClient } = await pool.query(
+            'INSERT INTO clients (tech_id, name, phone) VALUES ($1, $2, $3) RETURNING id',
+            [techId, clientName, clientPhone]
+          );
+          clientId = newClient[0].id;
+        }
       }
 
       // Fetch color name for SMS

@@ -20,11 +20,13 @@ CREATE TABLE IF NOT EXISTS colors (
 );
 
 CREATE TABLE IF NOT EXISTS clients (
-  id         SERIAL PRIMARY KEY,
-  tech_id    INT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
-  name       TEXT NOT NULL,
-  phone      TEXT NOT NULL,
-  created_at TIMESTAMPTZ DEFAULT NOW()
+  id            SERIAL PRIMARY KEY,
+  tech_id       INT REFERENCES users(id) ON DELETE CASCADE,
+  name          TEXT NOT NULL,
+  phone         TEXT NOT NULL,
+  email         TEXT UNIQUE,
+  password_hash TEXT,
+  created_at    TIMESTAMPTZ DEFAULT NOW()
 );
 
 CREATE TABLE IF NOT EXISTS appointments (
@@ -38,3 +40,9 @@ CREATE TABLE IF NOT EXISTS appointments (
   booked_by TEXT NOT NULL DEFAULT 'client' CHECK (booked_by IN ('client', 'tech')),
   created_at TIMESTAMPTZ DEFAULT NOW()
 );
+
+-- Migration: add email/password_hash to clients if not present (for existing DBs)
+ALTER TABLE clients ADD COLUMN IF NOT EXISTS email TEXT UNIQUE;
+ALTER TABLE clients ADD COLUMN IF NOT EXISTS password_hash TEXT;
+-- Migration: make tech_id nullable for self-registered clients
+ALTER TABLE clients ALTER COLUMN tech_id DROP NOT NULL;

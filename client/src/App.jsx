@@ -7,6 +7,9 @@ import DashboardPage from './pages/DashboardPage.jsx';
 import ColorsPage from './pages/ColorsPage.jsx';
 import BookingPage from './pages/BookingPage.jsx';
 import BookForClientPage from './pages/BookForClientPage.jsx';
+import ClientLoginPage from './pages/ClientLoginPage.jsx';
+import ClientSignupPage from './pages/ClientSignupPage.jsx';
+import ClientProfilePage from './pages/ClientProfilePage.jsx';
 
 function ProtectedRoute({ children }) {
   const { user, loading } = useAuth();
@@ -60,6 +63,9 @@ function AppRoutes() {
           }
         />
         <Route path="/book/:techId" element={<BookingPage />} />
+        <Route path="/client/login" element={<ClientLoginPage />} />
+        <Route path="/client/signup" element={<ClientSignupPage />} />
+        <Route path="/client/profile" element={<ClientProfilePage />} />
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
     </div>

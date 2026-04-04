@@ -54,7 +54,7 @@ router.post(
       }
 
       const token = jwt.sign(
-        { id: user.id, email: user.email, name: user.name },
+        { id: user.id, email: user.email, name: user.name, role: 'tech' },
         process.env.JWT_SECRET,
         { expiresIn: '7d' }
       );
@@ -103,7 +103,7 @@ router.post(
       }
 
       const token = jwt.sign(
-        { id: user.id, email: user.email, name: user.name },
+        { id: user.id, email: user.email, name: user.name, role: 'tech' },
         process.env.JWT_SECRET,
         { expiresIn: '7d' }
       );

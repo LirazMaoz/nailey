@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useCallback } from 'react';
+import React, { useEffect, useState, useCallback, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext.jsx';
 import { api } from '../lib/api.js';
@@ -17,6 +17,8 @@ export default function DashboardPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [showShareModal, setShowShareModal] = useState(false);
+  const [topColors, setTopColors] = useState([]);
+  const evtSourceRef = useRef(null);
 
   const today = todayISO();
 
@@ -40,6 +42,26 @@ export default function DashboardPage() {
   useEffect(() => {
     loadData();
   }, [loadData]);
+
+  // SSE for top colors
+  useEffect(() => {
+    if (!user?.id) return;
+    const evtSource = new EventSource(`/api/stats/top-colors/stream?techId=${user.id}`);
+    evtSourceRef.current = evtSource;
+    evtSource.onmessage = (e) => {
+      try {
+        setTopColors(JSON.parse(e.data));
+      } catch {
+        // ignore parse errors
+      }
+    };
+    evtSource.onerror = () => {
+      evtSource.close();
+    };
+    return () => {
+      evtSource.close();
+    };
+  }, [user?.id]);
 
   const handleStatusChange = (updated) => {
     setAppointments((prev) =>
@@ -157,6 +179,70 @@ export default function DashboardPage() {
               onStatusChange={handleStatusChange}
             />
           ))}
+        </div>
+
+        {/* Booking link section */}
+        <div className="mt-4">
+          <h2 className="text-lg font-bold text-purple-deeper mb-2">קישור הזמנה</h2>
+          <div className="bg-white rounded-2xl shadow-sm p-4 flex flex-col gap-3">
+            <p className="text-sm text-gray-500">שלחי ללקוחות שלך:</p>
+            <div
+              className="bg-purple-50 rounded-xl px-3 py-2 text-xs font-mono break-all text-gray-700 border border-purple-100"
+              dir="ltr"
+            >
+              {bookingLink}
+            </div>
+            <button onClick={copyLink} className="btn-outline text-sm py-2">
+              📋 העתקת קישור
+            </button>
+          </div>
+        </div>
+
+        {/* Top 10 colors section */}
+        <div className="mt-4 mb-6">
+          <div className="flex items-center gap-2 mb-2">
+            <h2 className="text-lg font-bold text-purple-deeper">Top 10 צבעים</h2>
+            <span className="flex items-center gap-1 text-xs text-green-600 font-semibold">
+              <span
+                className="inline-block w-2 h-2 rounded-full bg-green-500"
+                style={{ animation: 'pulse 2s infinite' }}
+              />
+              עדכון בזמן אמת
+            </span>
+          </div>
+          {topColors.length === 0 ? (
+            <div className="text-center text-gray-400 text-sm py-6">אין נתונים עדיין</div>
+          ) : (
+            <div className="bg-white rounded-2xl shadow-sm overflow-hidden">
+              <table className="w-full text-sm">
+                <thead>
+                  <tr className="bg-purple-50 text-purple-700 text-xs">
+                    <th className="py-2 px-3 text-right font-semibold">#</th>
+                    <th className="py-2 px-3 text-right font-semibold">צבע</th>
+                    <th className="py-2 px-3 text-right font-semibold">שם</th>
+                    <th className="py-2 px-3 text-right font-semibold">מספר</th>
+                    <th className="py-2 px-3 text-left font-semibold">טיפולים</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {topColors.map((c, i) => (
+                    <tr key={c.id} className="border-t border-gray-50">
+                      <td className="py-2 px-3 text-gray-400 font-bold">{i + 1}</td>
+                      <td className="py-2 px-3">
+                        <div
+                          className="rounded-full border border-gray-200"
+                          style={{ width: 20, height: 20, backgroundColor: c.hex }}
+                        />
+                      </td>
+                      <td className="py-2 px-3 text-gray-800 font-medium">{c.name}</td>
+                      <td className="py-2 px-3 text-gray-400 font-mono text-xs" dir="ltr">{c.number}</td>
+                      <td className="py-2 px-3 text-left font-bold text-purple-700">{c.count}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
         </div>
       </div>
 

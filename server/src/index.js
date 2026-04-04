@@ -9,6 +9,8 @@ import authRouter from './routes/auth.js';
 import colorsRouter from './routes/colors.js';
 import appointmentsRouter from './routes/appointments.js';
 import clientsRouter from './routes/clients.js';
+import clientAuthRouter from './routes/clientAuth.js';
+import statsRouter from './routes/stats.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const app = express();
@@ -27,6 +29,8 @@ app.use('/api/auth', authRouter);
 app.use('/api/colors', colorsRouter);
 app.use('/api/appointments', appointmentsRouter);
 app.use('/api/clients', clientsRouter);
+app.use('/api/client-auth', clientAuthRouter);
+app.use('/api/stats', statsRouter);
 
 // Health check
 app.get('/api/health', (_req, res) => {
