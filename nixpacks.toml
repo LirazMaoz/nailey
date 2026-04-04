@@ -1,5 +1,8 @@
 [phases.setup]
-nixPkgs = ["nodejs_20", "nodePackages.npm"]
+aptPkgs = ["nodejs", "npm", "curl"]
+cmds = [
+  "npm install -g npm@latest"
+]
 
 [phases.build]
 cmds = [
