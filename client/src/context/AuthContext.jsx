@@ -22,22 +22,34 @@ export function AuthProvider({ children }) {
     setLoading(false);
   }, []);
 
+  const persistUser = (data) => {
+    const userObj = {
+      id: data.user.id,
+      name: data.user.name,
+      email: data.user.email,
+      phone: data.user.phone,
+      username: data.user.username,
+      subscription_status: data.user.subscription_status,
+      trial_ends_at: data.user.trial_ends_at,
+      subscription_ends_at: data.user.subscription_ends_at,
+    };
+    setToken(data.token);
+    setUser(userObj);
+    localStorage.setItem('naily_token', data.token);
+    localStorage.setItem('naily_user', JSON.stringify(userObj));
+    return userObj;
+  };
+
   const login = async (email, password) => {
     const data = await api.post('/api/auth/login', { email, password });
-    setToken(data.token);
-    setUser(data.user);
-    localStorage.setItem('naily_token', data.token);
-    localStorage.setItem('naily_user', JSON.stringify(data.user));
+    persistUser(data);
     return data;
   };
 
   const signup = async (name, email, phone, password) => {
     const data = await api.post('/api/auth/signup', { name, email, phone, password });
     if (data.token) {
-      setToken(data.token);
-      setUser(data.user);
-      localStorage.setItem('naily_token', data.token);
-      localStorage.setItem('naily_user', JSON.stringify(data.user));
+      persistUser(data);
     }
     return data;
   };

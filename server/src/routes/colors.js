@@ -1,12 +1,12 @@
 import { Router } from 'express';
 import { body, validationResult } from 'express-validator';
 import { pool } from '../lib/db.js';
-import { requireAuth } from '../middleware/auth.js';
+import { requireAuth, requireSubscription } from '../middleware/auth.js';
 
 const router = Router();
 
 // GET /api/colors — tech's colors
-router.get('/', requireAuth, async (req, res) => {
+router.get('/', requireAuth, requireSubscription, async (req, res) => {
   try {
     const { rows } = await pool.query(
       'SELECT * FROM colors WHERE tech_id = $1 ORDER BY created_at',
@@ -19,10 +19,24 @@ router.get('/', requireAuth, async (req, res) => {
   }
 });
 
-// GET /api/colors/public/:techId — public, for booking flow (no auth)
-router.get('/public/:techId', async (req, res) => {
-  const { techId } = req.params;
+// GET /api/colors/public/:techRef — public, for booking flow (no auth)
+// techRef can be numeric id OR username slug
+router.get('/public/:techRef', async (req, res) => {
+  const { techRef } = req.params;
   try {
+    // Determine if techRef is numeric ID or username slug
+    const isNumeric = /^\d+$/.test(techRef);
+    let techId;
+    if (isNumeric) {
+      techId = parseInt(techRef, 10);
+    } else {
+      const { rows: userRows } = await pool.query(
+        'SELECT id FROM users WHERE username = $1',
+        [techRef]
+      );
+      if (userRows.length === 0) return res.status(404).json({ error: 'Tech not found' });
+      techId = userRows[0].id;
+    }
     const { rows } = await pool.query(
       'SELECT * FROM colors WHERE tech_id = $1 AND out_of_stock = false ORDER BY created_at',
       [techId]
@@ -38,6 +52,7 @@ router.get('/public/:techId', async (req, res) => {
 router.post(
   '/',
   requireAuth,
+  requireSubscription,
   [
     body('name').notEmpty().withMessage('שם צבע חובה'),
     body('number').notEmpty().withMessage('מספר צבע חובה'),
@@ -63,7 +78,7 @@ router.post(
 );
 
 // PATCH /api/colors/:id — update fields (name, number, hex, out_of_stock)
-router.patch('/:id', requireAuth, async (req, res) => {
+router.patch('/:id', requireAuth, requireSubscription, async (req, res) => {
   const { id } = req.params;
   const updates = req.body;
 
@@ -93,7 +108,7 @@ router.patch('/:id', requireAuth, async (req, res) => {
 });
 
 // DELETE /api/colors/:id
-router.delete('/:id', requireAuth, async (req, res) => {
+router.delete('/:id', requireAuth, requireSubscription, async (req, res) => {
   const { id } = req.params;
   try {
     await pool.query('DELETE FROM colors WHERE id = $1 AND tech_id = $2', [id, req.user.id]);

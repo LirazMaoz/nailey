@@ -2,7 +2,7 @@ import { Router } from 'express';
 import { body, validationResult } from 'express-validator';
 import jwt from 'jsonwebtoken';
 import { pool } from '../lib/db.js';
-import { requireAuth } from '../middleware/auth.js';
+import { requireAuth, requireSubscription } from '../middleware/auth.js';
 import { sendAppointmentSMS } from '../services/sms.js';
 
 const router = Router();
@@ -41,7 +41,7 @@ router.get('/slots', async (req, res) => {
 });
 
 // GET /api/appointments — tech's appointments (optional ?date=)
-router.get('/', requireAuth, async (req, res) => {
+router.get('/', requireAuth, requireSubscription, async (req, res) => {
   const { date } = req.query;
 
   try {
@@ -170,7 +170,7 @@ router.post(
 );
 
 // PATCH /api/appointments/:id — update status
-router.patch('/:id', requireAuth, async (req, res) => {
+router.patch('/:id', requireAuth, requireSubscription, async (req, res) => {
   const { id } = req.params;
   const { status } = req.body;
 

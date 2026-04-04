@@ -6,6 +6,13 @@ CREATE TABLE IF NOT EXISTS users (
   email         TEXT NOT NULL UNIQUE,
   password_hash TEXT NOT NULL,
   phone         TEXT,
+  username      TEXT UNIQUE,
+  subscription_status TEXT NOT NULL DEFAULT 'trial' CHECK (subscription_status IN ('trial','active','inactive','cancelled')),
+  subscription_plan   TEXT CHECK (subscription_plan IN ('monthly','yearly')),
+  trial_ends_at       TIMESTAMPTZ DEFAULT (NOW() + INTERVAL '14 days'),
+  subscription_ends_at TIMESTAMPTZ,
+  stripe_customer_id   TEXT,
+  stripe_subscription_id TEXT,
   created_at    TIMESTAMPTZ DEFAULT NOW()
 );
 
@@ -41,8 +48,25 @@ CREATE TABLE IF NOT EXISTS appointments (
   created_at TIMESTAMPTZ DEFAULT NOW()
 );
 
+CREATE TABLE IF NOT EXISTS admin_users (
+  id SERIAL PRIMARY KEY,
+  email TEXT UNIQUE NOT NULL,
+  password_hash TEXT NOT NULL,
+  created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
 -- Migration: add email/password_hash to clients if not present (for existing DBs)
 ALTER TABLE clients ADD COLUMN IF NOT EXISTS email TEXT UNIQUE;
 ALTER TABLE clients ADD COLUMN IF NOT EXISTS password_hash TEXT;
 -- Migration: make tech_id nullable for self-registered clients
 ALTER TABLE clients ALTER COLUMN tech_id DROP NOT NULL;
+
+-- Migration: subscription and username fields for existing DBs
+ALTER TABLE users ADD COLUMN IF NOT EXISTS username TEXT UNIQUE;
+ALTER TABLE users ADD COLUMN IF NOT EXISTS subscription_status TEXT NOT NULL DEFAULT 'trial';
+ALTER TABLE users ADD COLUMN IF NOT EXISTS subscription_plan TEXT;
+ALTER TABLE users ADD COLUMN IF NOT EXISTS trial_ends_at TIMESTAMPTZ DEFAULT (NOW() + INTERVAL '14 days');
+ALTER TABLE users ADD COLUMN IF NOT EXISTS subscription_ends_at TIMESTAMPTZ;
+ALTER TABLE users ADD COLUMN IF NOT EXISTS stripe_customer_id TEXT;
+ALTER TABLE users ADD COLUMN IF NOT EXISTS stripe_subscription_id TEXT;
+CREATE TABLE IF NOT EXISTS admin_users (id SERIAL PRIMARY KEY, email TEXT UNIQUE NOT NULL, password_hash TEXT NOT NULL, created_at TIMESTAMPTZ DEFAULT NOW());

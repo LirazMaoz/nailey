@@ -33,6 +33,17 @@ const STEPS = ['תאריך', 'שעה', 'צבע', 'פרטים', 'אישור'];
 export default function BookingPage() {
   const { techId } = useParams();
   const navigate = useNavigate();
+  const [techInfo, setTechInfo] = useState(null);
+
+  // Load tech info (name) to show in header
+  useEffect(() => {
+    api.get(`/api/tech/${techId}`)
+      .then(setTechInfo)
+      .catch(() => setTechInfo(null));
+  }, [techId]);
+
+  // Resolve numeric techId for slots API (slots API expects numeric id)
+  const resolvedTechId = techInfo?.id || techId;
 
   // Client auth state
   const [clientUser, setClientUser] = useState(() => {
@@ -68,11 +79,11 @@ export default function BookingPage() {
     setSelectedTime('');
     setLoading(true);
     api
-      .get(`/api/appointments/slots?techId=${techId}&date=${dateToISO(selectedDate)}`)
+      .get(`/api/appointments/slots?techId=${resolvedTechId}&date=${dateToISO(selectedDate)}`)
       .then((d) => setSlots(d.slots || []))
       .catch((e) => setError(e.message))
       .finally(() => setLoading(false));
-  }, [selectedDate, techId]);
+  }, [selectedDate, resolvedTechId]);
 
   // Load colors once
   useEffect(() => {
@@ -97,7 +108,7 @@ export default function BookingPage() {
     setError('');
     try {
       const body = {
-        techId,
+        techId: resolvedTechId,
         clientName: clientUser ? clientUser.name : clientName.trim(),
         clientPhone: clientUser ? (clientUser.phone || clientPhone.trim()) : clientPhone.trim(),
         colorId: selectedColor.id,
@@ -190,7 +201,9 @@ export default function BookingPage() {
       <div className="bg-client-gradient text-white text-center py-8 px-6 rounded-b-3xl">
         <div className="text-4xl mb-1">💅</div>
         <h1 className="text-2xl font-extrabold">קביעת תור</h1>
-        <p className="text-white/80 text-sm mt-1">Naily</p>
+        <p className="text-white/80 text-sm mt-1">
+          {techInfo?.name ? `הזמן תור אצל ${techInfo.name}` : 'Naily'}
+        </p>
       </div>
 
       {/* Client welcome banner */}

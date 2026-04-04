@@ -3,6 +3,8 @@ import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext.jsx';
 import { api } from '../lib/api.js';
 import AppointmentCard from '../components/AppointmentCard.jsx';
+import { useSubscription } from '../hooks/useSubscription.js';
+import SubscriptionModal from '../components/SubscriptionModal.jsx';
 
 function todayISO() {
   return new Date().toISOString().split('T')[0];
@@ -11,6 +13,8 @@ function todayISO() {
 export default function DashboardPage() {
   const { user, logout } = useAuth();
   const navigate = useNavigate();
+  const { status: subStatus, loading: subLoading, isBlocked } = useSubscription();
+  const [trialBannerDismissed, setTrialBannerDismissed] = useState(false);
 
   const [appointments, setAppointments] = useState([]);
   const [outOfStockCount, setOutOfStockCount] = useState(0);
@@ -69,7 +73,7 @@ export default function DashboardPage() {
     );
   };
 
-  const bookingLink = `${window.location.origin}/book/${user?.id}`;
+  const bookingLink = `${window.location.origin}/book/${user?.username || user?.id}`;
 
   const copyLink = () => {
     navigator.clipboard.writeText(bookingLink).then(() => {
@@ -77,8 +81,42 @@ export default function DashboardPage() {
     });
   };
 
+  // Show paywall if subscription is blocked
+  if (!subLoading && isBlocked) {
+    return <SubscriptionModal status={subStatus} />;
+  }
+
   return (
     <div className="min-h-screen bg-gray-50 flex flex-col">
+      {/* Trial banner */}
+      {!subLoading && subStatus?.access === 'trial_active' && !trialBannerDismissed && (
+        <div
+          className="flex items-center justify-between px-4 py-2 text-sm font-semibold text-white"
+          style={{ background: 'linear-gradient(90deg, #f8a5c2, #c56cd6)' }}
+        >
+          <span>
+            ניסיון חינמי — נותרו {subStatus.days_left} ימים
+          </span>
+          <div className="flex items-center gap-3">
+            <button
+              onClick={() => {
+                api.post('/api/subscriptions/checkout', { plan: 'monthly' })
+                  .then((d) => d.url && window.open(d.url, '_blank'))
+                  .catch(() => {});
+              }}
+              className="bg-white text-purple-700 rounded-lg px-3 py-0.5 text-xs font-bold"
+            >
+              שדרגי עכשיו
+            </button>
+            <button
+              onClick={() => setTrialBannerDismissed(true)}
+              className="text-white/80 hover:text-white text-lg leading-none"
+            >
+              ×
+            </button>
+          </div>
+        </div>
+      )}
       {/* Header */}
       <div className="bg-tech-gradient text-white px-4 pt-6 pb-8 rounded-b-3xl">
         <div className="flex items-center justify-between mb-4">

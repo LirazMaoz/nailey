@@ -4,13 +4,15 @@ import cors from 'cors';
 import path from 'path';
 import { fileURLToPath } from 'url';
 
-import { runMigrations } from './lib/db.js';
+import { runMigrations, pool } from './lib/db.js';
 import authRouter from './routes/auth.js';
 import colorsRouter from './routes/colors.js';
 import appointmentsRouter from './routes/appointments.js';
 import clientsRouter from './routes/clients.js';
 import clientAuthRouter from './routes/clientAuth.js';
 import statsRouter from './routes/stats.js';
+import subscriptionsRouter from './routes/subscriptions.js';
+import adminRouter from './routes/admin.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const app = express();
@@ -31,6 +33,27 @@ app.use('/api/appointments', appointmentsRouter);
 app.use('/api/clients', clientsRouter);
 app.use('/api/client-auth', clientAuthRouter);
 app.use('/api/stats', statsRouter);
+app.use('/api/subscriptions', subscriptionsRouter);
+app.use('/api/admin', adminRouter);
+
+// GET /api/tech/:techRef — public, returns { id, name, username } for booking page
+app.get('/api/tech/:techRef', async (req, res) => {
+  const { techRef } = req.params;
+  try {
+    const isNumeric = /^\d+$/.test(techRef);
+    let rows;
+    if (isNumeric) {
+      ({ rows } = await pool.query('SELECT id, name, username FROM users WHERE id = $1', [techRef]));
+    } else {
+      ({ rows } = await pool.query('SELECT id, name, username FROM users WHERE username = $1', [techRef]));
+    }
+    if (rows.length === 0) return res.status(404).json({ error: 'Tech not found' });
+    return res.json(rows[0]);
+  } catch (err) {
+    console.error('tech lookup error:', err);
+    return res.status(500).json({ error: 'שגיאת שרת' });
+  }
+});
 
 // Health check
 app.get('/api/health', (_req, res) => {
