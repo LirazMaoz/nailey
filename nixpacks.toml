@@ -1,0 +1,12 @@
+[phases.setup]
+nixPkgs = ["nodejs_20", "nodePackages.npm"]
+
+[phases.build]
+cmds = [
+  "npm install --prefix server",
+  "npm install --prefix client",
+  "npm run build --prefix client"
+]
+
+[start]
+cmd = "node server/src/index.js"
