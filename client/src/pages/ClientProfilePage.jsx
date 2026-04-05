@@ -231,7 +231,7 @@ export default function ClientProfilePage() {
               className="w-full py-3 rounded-xl font-bold text-white mt-2 max-w-sm text-center block"
               style={{ background: 'linear-gradient(135deg, #f8a5c2, #c56cd6)' }}
             >
-              קביעת תור חדש
+              קביעת תורים
             </Link>
           ) : (
             <p className="text-center text-sm text-gray-400 mt-2">
