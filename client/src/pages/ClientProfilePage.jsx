@@ -1,14 +1,16 @@
 import React, { useEffect, useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
+import { api } from '../lib/api.js';
 
 function getLastTechId() {
   try { return localStorage.getItem('naily_last_tech') || null; } catch { return null; }
 }
 
 const STATUS_LABELS = {
-  pending: { label: 'ממתין', color: 'bg-yellow-100 text-yellow-700 border-yellow-200' },
-  arrived: { label: 'הגיעה', color: 'bg-blue-100 text-blue-700 border-blue-200' },
-  done: { label: 'הושלם', color: 'bg-green-100 text-green-700 border-green-200' },
+  pending:   { label: 'ממתין',  color: 'bg-yellow-100 text-yellow-700 border-yellow-200' },
+  arrived:   { label: 'הגיעה',  color: 'bg-blue-100 text-blue-700 border-blue-200' },
+  done:      { label: 'הושלם', color: 'bg-green-100 text-green-700 border-green-200' },
+  cancelled: { label: 'בוטל',  color: 'bg-red-100 text-red-500 border-red-200' },
 };
 
 function formatDate(dateStr) {
@@ -63,6 +65,21 @@ export default function ClientProfilePage() {
     localStorage.removeItem('naily_client_token');
     localStorage.removeItem('naily_client_user');
     navigate('/client/login');
+  };
+
+  const handleCancel = async (apptId) => {
+    if (!confirm('לבטל את התור?')) return;
+    try {
+      await api.patch(`/api/appointments/${apptId}/cancel`);
+      setProfile((prev) => ({
+        ...prev,
+        appointments: prev.appointments.map((a) =>
+          a.id === apptId ? { ...a, status: 'cancelled' } : a
+        ),
+      }));
+    } catch (err) {
+      alert(err.message || 'שגיאה בביטול התור');
+    }
   };
 
   if (loading) {
@@ -150,6 +167,7 @@ export default function ClientProfilePage() {
                       <th className="py-3 px-4 text-right font-semibold">שעה</th>
                       <th className="py-3 px-4 text-right font-semibold">צבע</th>
                       <th className="py-3 px-4 text-right font-semibold">סטטוס</th>
+                      <th className="py-3 px-4"></th>
                     </tr>
                   </thead>
                   <tbody>
@@ -177,6 +195,16 @@ export default function ClientProfilePage() {
                               {statusInfo.label}
                             </span>
                           </td>
+                          <td className="py-3 px-4 text-left">
+                            {appt.status === 'pending' && (
+                              <button
+                                onClick={() => handleCancel(appt.id)}
+                                className="text-xs text-red-400 underline font-semibold"
+                              >
+                                ביטול
+                              </button>
+                            )}
+                          </td>
                         </tr>
                       );
                     })}
@@ -199,11 +227,19 @@ export default function ClientProfilePage() {
                     <span className="font-semibold text-gray-700 text-sm">
                       {formatDate(appt.date)}
                     </span>
-                    <span
-                      className={`text-xs font-semibold px-2 py-0.5 rounded-full border ${statusInfo.color}`}
-                    >
-                      {statusInfo.label}
-                    </span>
+                    <div className="flex items-center gap-2">
+                      <span className={`text-xs font-semibold px-2 py-0.5 rounded-full border ${statusInfo.color}`}>
+                        {statusInfo.label}
+                      </span>
+                      {appt.status === 'pending' && (
+                        <button
+                          onClick={() => handleCancel(appt.id)}
+                          className="text-xs text-red-400 underline font-semibold"
+                        >
+                          ביטול
+                        </button>
+                      )}
+                    </div>
                   </div>
                   <div className="flex items-center justify-between text-sm text-gray-500">
                     <span dir="ltr">{formatTime(appt.time)}</span>

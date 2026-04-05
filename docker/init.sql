@@ -55,6 +55,16 @@ CREATE TABLE IF NOT EXISTS admin_users (
   created_at TIMESTAMPTZ DEFAULT NOW()
 );
 
+CREATE TABLE IF NOT EXISTS availability (
+  id           SERIAL PRIMARY KEY,
+  tech_id      INT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  day_of_week  INT NOT NULL CHECK (day_of_week BETWEEN 0 AND 6),
+  is_open      BOOLEAN NOT NULL DEFAULT true,
+  start_time   TIME NOT NULL DEFAULT '09:00',
+  end_time     TIME NOT NULL DEFAULT '18:00',
+  UNIQUE(tech_id, day_of_week)
+);
+
 -- Migration: add email/password_hash to clients if not present (for existing DBs)
 ALTER TABLE clients ADD COLUMN IF NOT EXISTS email TEXT UNIQUE;
 ALTER TABLE clients ADD COLUMN IF NOT EXISTS password_hash TEXT;
@@ -70,3 +80,16 @@ ALTER TABLE users ADD COLUMN IF NOT EXISTS subscription_ends_at TIMESTAMPTZ;
 ALTER TABLE users ADD COLUMN IF NOT EXISTS stripe_customer_id TEXT;
 ALTER TABLE users ADD COLUMN IF NOT EXISTS stripe_subscription_id TEXT;
 CREATE TABLE IF NOT EXISTS admin_users (id SERIAL PRIMARY KEY, email TEXT UNIQUE NOT NULL, password_hash TEXT NOT NULL, created_at TIMESTAMPTZ DEFAULT NOW());
+-- Migration: add cancelled status to appointments
+ALTER TABLE appointments DROP CONSTRAINT IF EXISTS appointments_status_check;
+ALTER TABLE appointments ADD CONSTRAINT appointments_status_check CHECK (status IN ('pending','arrived','done','cancelled'));
+-- Migration: availability table
+CREATE TABLE IF NOT EXISTS availability (
+  id SERIAL PRIMARY KEY,
+  tech_id INT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  day_of_week INT NOT NULL CHECK (day_of_week BETWEEN 0 AND 6),
+  is_open BOOLEAN NOT NULL DEFAULT true,
+  start_time TIME NOT NULL DEFAULT '09:00',
+  end_time TIME NOT NULL DEFAULT '18:00',
+  UNIQUE(tech_id, day_of_week)
+);

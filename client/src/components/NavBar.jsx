@@ -6,6 +6,7 @@ const NAV_LINKS = [
   { path: '/dashboard', label: 'לוח בקרה' },
   { path: '/colors', label: 'ניהול צבעים' },
   { path: '/book-for-client', label: 'קביעת תור' },
+  { path: '/availability', label: 'זמינות' },
 ];
 
 export default function NavBar() {

@@ -7,16 +7,18 @@ import { sendAppointmentSMS } from '../services/sms.js';
 
 const router = Router();
 
-// Generate time slots 09:00–18:00 every 30 minutes
-function generateAllSlots() {
+function generateSlots(startTime, endTime) {
   const slots = [];
-  for (let h = 9; h < 18; h++) {
-    slots.push(`${String(h).padStart(2, '0')}:00`);
-    slots.push(`${String(h).padStart(2, '0')}:30`);
+  const [sh, sm] = startTime.split(':').map(Number);
+  const [eh, em] = endTime.split(':').map(Number);
+  let mins = sh * 60 + sm;
+  const endMins = eh * 60 + em;
+  while (mins < endMins) {
+    slots.push(`${String(Math.floor(mins / 60)).padStart(2, '0')}:${String(mins % 60).padStart(2, '0')}`);
+    mins += 30;
   }
   return slots;
 }
-const ALL_SLOTS = generateAllSlots();
 
 // GET /api/appointments/slots?techId=&date=  (public)
 router.get('/slots', async (req, res) => {
@@ -26,14 +28,33 @@ router.get('/slots', async (req, res) => {
   }
 
   try {
+    // Check tech's availability for this day of week
+    const dayOfWeek = new Date(date + 'T12:00:00').getDay(); // noon to avoid TZ shift
+    const { rows: avail } = await pool.query(
+      'SELECT is_open, start_time, end_time FROM availability WHERE tech_id = $1 AND day_of_week = $2',
+      [techId, dayOfWeek]
+    );
+
+    let allSlots;
+    if (avail.length > 0) {
+      if (!avail[0].is_open) return res.json({ slots: [] });
+      allSlots = generateSlots(
+        String(avail[0].start_time).slice(0, 5),
+        String(avail[0].end_time).slice(0, 5)
+      );
+    } else {
+      // Default: 09:00-18:00, closed Sat
+      if (dayOfWeek === 6) return res.json({ slots: [] });
+      allSlots = generateSlots('09:00', '18:00');
+    }
+
     const { rows } = await pool.query(
-      "SELECT time FROM appointments WHERE tech_id = $1 AND date = $2 AND status != 'done'",
+      "SELECT time FROM appointments WHERE tech_id = $1 AND date = $2 AND status NOT IN ('done','cancelled')",
       [techId, date]
     );
 
     const booked = new Set(rows.map((r) => String(r.time).slice(0, 5)));
-    const available = ALL_SLOTS.filter((s) => !booked.has(s));
-    return res.json({ slots: available });
+    return res.json({ slots: allSlots.filter((s) => !booked.has(s)) });
   } catch (err) {
     console.error(err);
     return res.status(500).json({ error: 'שגיאת שרת' });
@@ -187,7 +208,7 @@ router.post(
   }
 );
 
-// PATCH /api/appointments/:id — update status
+// PATCH /api/appointments/:id — update status (tech)
 router.patch('/:id', requireAuth, requireSubscription, async (req, res) => {
   const { id } = req.params;
   const { status } = req.body;
@@ -204,6 +225,44 @@ router.patch('/:id', requireAuth, requireSubscription, async (req, res) => {
     );
     if (rows.length === 0) return res.status(404).json({ error: 'תור לא נמצא' });
     return res.json(rows[0]);
+  } catch (err) {
+    console.error(err);
+    return res.status(500).json({ error: 'שגיאת שרת' });
+  }
+});
+
+// DELETE /api/appointments/:id — tech cancels/deletes appointment
+router.delete('/:id', requireAuth, requireSubscription, async (req, res) => {
+  const { id } = req.params;
+  try {
+    const { rows } = await pool.query(
+      "UPDATE appointments SET status = 'cancelled' WHERE id = $1 AND tech_id = $2 RETURNING id",
+      [id, req.user.id]
+    );
+    if (rows.length === 0) return res.status(404).json({ error: 'תור לא נמצא' });
+    return res.json({ message: 'התור בוטל' });
+  } catch (err) {
+    console.error(err);
+    return res.status(500).json({ error: 'שגיאת שרת' });
+  }
+});
+
+// PATCH /api/appointments/:id/cancel — client cancels their own appointment
+router.patch('/:id/cancel', async (req, res) => {
+  const { id } = req.params;
+  const token = req.headers.authorization?.split(' ')[1];
+  if (!token) return res.status(401).json({ error: 'Unauthorized' });
+
+  try {
+    const payload = jwt.verify(token, process.env.JWT_SECRET);
+    if (payload.role !== 'client') return res.status(403).json({ error: 'Forbidden' });
+
+    const { rows } = await pool.query(
+      "UPDATE appointments SET status = 'cancelled' WHERE id = $1 AND client_id = $2 AND status = 'pending' RETURNING id",
+      [id, payload.id]
+    );
+    if (rows.length === 0) return res.status(404).json({ error: 'תור לא נמצא או שלא ניתן לבטלו' });
+    return res.json({ message: 'התור בוטל' });
   } catch (err) {
     console.error(err);
     return res.status(500).json({ error: 'שגיאת שרת' });

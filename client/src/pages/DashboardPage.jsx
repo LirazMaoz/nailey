@@ -74,6 +74,10 @@ export default function DashboardPage() {
     );
   };
 
+  const handleDelete = (id) => {
+    setAppointments((prev) => prev.filter((a) => a.id !== id));
+  };
+
   const bookingLink = `${window.location.origin}/book/${user?.username || user?.id}`;
 
   const copyLink = () => {
@@ -219,6 +223,7 @@ export default function DashboardPage() {
                   key={appt.id}
                   appointment={appt}
                   onStatusChange={handleStatusChange}
+                  onDelete={handleDelete}
                 />
               ))}
             </div>

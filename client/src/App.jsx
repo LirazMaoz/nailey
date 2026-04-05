@@ -11,6 +11,7 @@ import ClientLoginPage from './pages/ClientLoginPage.jsx';
 import ClientSignupPage from './pages/ClientSignupPage.jsx';
 import ClientProfilePage from './pages/ClientProfilePage.jsx';
 import LandingPage from './pages/LandingPage.jsx';
+import AvailabilityPage from './pages/AvailabilityPage.jsx';
 import AdminLoginPage from './pages/admin/AdminLoginPage.jsx';
 import AdminDashboardPage from './pages/admin/AdminDashboardPage.jsx';
 import AdminProtectedRoute from './pages/admin/AdminProtectedRoute.jsx';
@@ -86,6 +87,14 @@ function AppRoutes() {
           element={
             <ProtectedRoute>
               <BookForClientPage />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/availability"
+          element={
+            <ProtectedRoute>
+              <AvailabilityPage />
             </ProtectedRoute>
           }
         />

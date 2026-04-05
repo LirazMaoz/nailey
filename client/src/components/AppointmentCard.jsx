@@ -25,7 +25,7 @@ const NEXT_STATUS_LABEL = {
   arrived: 'סמן הסתיים',
 };
 
-export default function AppointmentCard({ appointment, onStatusChange }) {
+export default function AppointmentCard({ appointment, onStatusChange, onDelete }) {
   const { id, time, status, client_name, color_name, color_hex } = appointment;
   const clientName = client_name || 'לקוחה לא ידועה';
   const colorName = color_name || '';
@@ -40,6 +40,16 @@ export default function AppointmentCard({ appointment, onStatusChange }) {
       onStatusChange?.(updated);
     } catch (err) {
       console.error('Status update error:', err);
+    }
+  };
+
+  const handleDelete = async () => {
+    if (!confirm(`לבטל את התור של ${clientName}?`)) return;
+    try {
+      await api.delete(`/api/appointments/${id}`);
+      onDelete?.(id);
+    } catch (err) {
+      console.error('Delete error:', err);
     }
   };
 
@@ -61,17 +71,17 @@ export default function AppointmentCard({ appointment, onStatusChange }) {
         )}
       </div>
 
-      {/* Status + action */}
+      {/* Status + actions */}
       <div className="flex flex-col items-end gap-1">
         <span className={STATUS_CLASSES[status]}>{STATUS_LABELS[status]}</span>
         {nextStatus && (
-          <button
-            onClick={handleAdvance}
-            className="text-xs text-purple-dark underline font-semibold"
-          >
+          <button onClick={handleAdvance} className="text-xs text-purple-dark underline font-semibold">
             {NEXT_STATUS_LABEL[status]}
           </button>
         )}
+        <button onClick={handleDelete} className="text-xs text-red-400 underline font-semibold">
+          ביטול תור
+        </button>
       </div>
     </div>
   );
