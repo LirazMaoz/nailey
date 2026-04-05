@@ -22,6 +22,10 @@ export default function ClientSignupPage() {
       const data = await api.post('/api/client-auth/signup', { name, phone, email, password });
       localStorage.setItem('naily_client_token', data.token);
       localStorage.setItem('naily_client_user', JSON.stringify(data.user));
+      if (redirect) {
+        const m = decodeURIComponent(redirect).match(/\/book\/([^/]+)/);
+        if (m) localStorage.setItem('naily_last_tech', m[1]);
+      }
       navigate(redirect ? decodeURIComponent(redirect) : '/client/profile');
     } catch (err) {
       setError(err.message || 'שגיאה בהרשמה');
