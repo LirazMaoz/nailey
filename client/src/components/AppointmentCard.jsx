@@ -26,10 +26,10 @@ const NEXT_STATUS_LABEL = {
 };
 
 export default function AppointmentCard({ appointment, onStatusChange }) {
-  const { id, time, status, clients, colors } = appointment;
-  const clientName = clients?.name || 'לקוחה לא ידועה';
-  const colorName = colors?.name || '';
-  const colorHex = colors?.hex || '#ccc';
+  const { id, time, status, client_name, color_name, color_hex } = appointment;
+  const clientName = client_name || 'לקוחה לא ידועה';
+  const colorName = color_name || '';
+  const colorHex = color_hex || '#ccc';
 
   const nextStatus = NEXT_STATUS[status];
 
