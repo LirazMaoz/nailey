@@ -1,6 +1,10 @@
 import React, { useEffect, useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 
+function getLastTechId() {
+  try { return localStorage.getItem('naily_last_tech') || null; } catch { return null; }
+}
+
 const STATUS_LABELS = {
   pending: { label: 'ממתין', color: 'bg-yellow-100 text-yellow-700 border-yellow-200' },
   arrived: { label: 'הגיעה', color: 'bg-blue-100 text-blue-700 border-blue-200' },
@@ -221,13 +225,19 @@ export default function ClientProfilePage() {
           </div>
 
           {/* Book new appointment */}
-          <button
-            onClick={() => navigate(-1)}
-            className="w-full py-3 rounded-xl font-bold text-white mt-2 max-w-sm"
-            style={{ background: 'linear-gradient(135deg, #f8a5c2, #c56cd6)' }}
-          >
-            הזמן תור חדש
-          </button>
+          {getLastTechId() ? (
+            <Link
+              to={`/book/${getLastTechId()}`}
+              className="w-full py-3 rounded-xl font-bold text-white mt-2 max-w-sm text-center block"
+              style={{ background: 'linear-gradient(135deg, #f8a5c2, #c56cd6)' }}
+            >
+              קביעת תור חדש
+            </Link>
+          ) : (
+            <p className="text-center text-sm text-gray-400 mt-2">
+              לקביעת תור חדש, השתמשי בקישור שקיבלת מהטכנאית שלך
+            </p>
+          )}
         </div>
       </div>
     </div>

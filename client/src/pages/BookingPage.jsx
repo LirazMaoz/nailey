@@ -40,6 +40,8 @@ export default function BookingPage() {
     api.get(`/api/tech/${techId}`)
       .then(setTechInfo)
       .catch(() => setTechInfo(null));
+    // Remember this tech so the profile page can link back
+    localStorage.setItem('naily_last_tech', techId);
   }, [techId]);
 
   // Resolve numeric techId for slots API (slots API expects numeric id)
