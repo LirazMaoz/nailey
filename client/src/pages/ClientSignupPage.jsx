@@ -49,8 +49,16 @@ export default function ClientSignupPage() {
           <h2 className="text-xl font-bold text-purple-800 text-center">יצירת חשבון חדש</h2>
 
           {error && (
-            <div className="bg-red-50 border border-red-200 text-red-600 rounded-xl px-4 py-3 text-sm">
-              {error}
+            <div className="bg-red-50 border border-red-200 text-red-600 rounded-xl px-4 py-3 text-sm flex flex-col gap-1">
+              <span>{error}</span>
+              {(error.includes('רשומה') || error.includes('רשום')) && (
+                <Link
+                  to={`/client/login${redirect ? `?redirect=${redirect}` : ''}`}
+                  className="text-purple-600 font-semibold underline"
+                >
+                  לחצי כאן להתחברות
+                </Link>
+              )}
             </div>
           )}
 

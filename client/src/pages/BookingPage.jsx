@@ -104,6 +104,9 @@ export default function BookingPage() {
     if (!clientUser && (!clientName.trim() || !clientPhone.trim())) {
       return setError('יש למלא שם ומספר טלפון');
     }
+    if (clientUser && !clientUser.phone && !clientPhone.trim()) {
+      return setError('יש למלא מספר טלפון');
+    }
     setLoading(true);
     setError('');
     try {
@@ -350,9 +353,23 @@ export default function BookingPage() {
             </div>
 
             {clientUser ? (
-              <div className="bg-purple-50 border border-purple-200 rounded-xl px-4 py-3 text-sm text-purple-700">
+              <div className="bg-purple-50 border border-purple-200 rounded-xl px-4 py-3 text-sm text-purple-700 flex flex-col gap-2">
                 <p className="font-semibold">{clientUser.name}</p>
-                <p className="text-purple-500 text-xs">{clientUser.phone}</p>
+                {clientUser.phone ? (
+                  <p className="text-purple-500 text-xs">{clientUser.phone}</p>
+                ) : (
+                  <div>
+                    <label className="block text-sm font-semibold text-gray-600 mb-1">מספר טלפון</label>
+                    <input
+                      type="tel"
+                      value={clientPhone}
+                      onChange={(e) => setClientPhone(e.target.value)}
+                      className="input-field"
+                      placeholder="050-0000000"
+                      dir="ltr"
+                    />
+                  </div>
+                )}
               </div>
             ) : (
               <>

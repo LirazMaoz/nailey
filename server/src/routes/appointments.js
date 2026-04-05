@@ -79,8 +79,14 @@ router.post(
   '/',
   [
     body('techId').notEmpty().withMessage('techId חסר'),
-    body('clientName').notEmpty().withMessage('שם לקוח חסר'),
-    body('clientPhone').notEmpty().withMessage('טלפון לקוח חסר'),
+    body('clientName').custom((value, { req }) => {
+      if (!req.body.clientToken && !value) throw new Error('שם לקוח חסר');
+      return true;
+    }),
+    body('clientPhone').custom((value, { req }) => {
+      if (!req.body.clientToken && !value) throw new Error('טלפון לקוח חסר');
+      return true;
+    }),
     body('colorId').notEmpty().withMessage('colorId חסר'),
     body('date').isDate().withMessage('תאריך לא תקין'),
     body('time').matches(/^\d{2}:\d{2}$/).withMessage('שעה לא תקינה'),
@@ -104,12 +110,24 @@ router.post(
       // Determine client_id
       let clientId = null;
 
+      let resolvedName = clientName;
+      let resolvedPhone = clientPhone;
+
       if (clientToken) {
         // Authenticated client booking
         try {
           const payload = jwt.verify(clientToken, process.env.JWT_SECRET);
           if (payload.role === 'client') {
             clientId = payload.id;
+            // Look up name/phone from DB in case they're missing from the request
+            const { rows: clientRows } = await pool.query(
+              'SELECT name, phone FROM clients WHERE id = $1',
+              [clientId]
+            );
+            if (clientRows.length > 0) {
+              resolvedName = resolvedName || clientRows[0].name;
+              resolvedPhone = resolvedPhone || clientRows[0].phone;
+            }
           }
         } catch {
           // Invalid token — fall through to upsert by phone
@@ -120,16 +138,16 @@ router.post(
         // Upsert client (find by phone + techId)
         const { rows: existingClients } = await pool.query(
           'SELECT id FROM clients WHERE tech_id = $1 AND phone = $2',
-          [techId, clientPhone]
+          [techId, resolvedPhone]
         );
 
         if (existingClients.length > 0) {
           clientId = existingClients[0].id;
-          await pool.query('UPDATE clients SET name = $1 WHERE id = $2', [clientName, clientId]);
+          await pool.query('UPDATE clients SET name = $1 WHERE id = $2', [resolvedName, clientId]);
         } else {
           const { rows: newClient } = await pool.query(
             'INSERT INTO clients (tech_id, name, phone) VALUES ($1, $2, $3) RETURNING id',
-            [techId, clientName, clientPhone]
+            [techId, resolvedName, resolvedPhone]
           );
           clientId = newClient[0].id;
         }
@@ -149,13 +167,13 @@ router.post(
       const appt = apptRows[0];
 
       // Enrich with joined data
-      appt.client_name = clientName;
-      appt.client_phone = clientPhone;
+      appt.client_name = resolvedName;
+      appt.client_phone = resolvedPhone;
       appt.color_name = colorName;
 
       // Send SMS confirmation
-      const smsResult = await sendAppointmentSMS(clientPhone, {
-        clientName,
+      const smsResult = await sendAppointmentSMS(resolvedPhone, {
+        clientName: resolvedName,
         date,
         time,
         colorName,

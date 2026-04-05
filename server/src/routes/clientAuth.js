@@ -27,11 +27,11 @@ router.post(
     try {
       const existingEmail = await pool.query('SELECT id FROM clients WHERE email = $1', [email]);
       if (existingEmail.rows.length > 0) {
-        return res.status(400).json({ error: 'אימייל כבר קיים במערכת' });
+        return res.status(400).json({ error: 'כתובת האימייל כבר רשומה – נסי להתחבר במקום' });
       }
       const existingPhone = await pool.query('SELECT id FROM clients WHERE phone = $1 AND email IS NOT NULL', [phone]);
       if (existingPhone.rows.length > 0) {
-        return res.status(400).json({ error: 'מספר טלפון כבר רשום במערכת' });
+        return res.status(400).json({ error: 'מספר הטלפון כבר רשום – נסי להתחבר במקום' });
       }
 
       const password_hash = await bcrypt.hash(password, 10);
