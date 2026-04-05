@@ -2,10 +2,19 @@ const BASE_URL = import.meta.env.VITE_API_URL ?? '';
 
 function getToken() {
   try {
-    return localStorage.getItem('naily_token') ?? null;
+    // Tech token takes priority; fall back to client token
+    return (
+      localStorage.getItem('naily_token') ??
+      localStorage.getItem('naily_client_token') ??
+      null
+    );
   } catch {
     return null;
   }
+}
+
+function isClientPath(path) {
+  return path.startsWith('/api/client-auth');
 }
 
 async function request(path, options = {}) {
@@ -24,12 +33,15 @@ async function request(path, options = {}) {
   const data = await response.json().catch(() => ({}));
 
   if (!response.ok) {
-    // Auto-clear stale tokens on 401
+    // On 401: only clear the token type that was actually used
     if (response.status === 401) {
-      localStorage.removeItem('naily_token');
-      localStorage.removeItem('naily_user');
-      localStorage.removeItem('naily_client_token');
-      localStorage.removeItem('naily_client_user');
+      if (isClientPath(path)) {
+        localStorage.removeItem('naily_client_token');
+        localStorage.removeItem('naily_client_user');
+      } else {
+        localStorage.removeItem('naily_token');
+        localStorage.removeItem('naily_user');
+      }
     }
     const message =
       data?.error ||
