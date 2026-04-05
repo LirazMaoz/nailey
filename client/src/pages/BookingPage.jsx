@@ -139,7 +139,7 @@ export default function BookingPage() {
           <p className="text-gray-500 text-sm">רוצה לשמור את היסטוריית התורים שלך?</p>
           <div className="flex flex-col gap-3">
             <Link
-              to={`/client/login?redirect=back`}
+              to={`/client/login?redirect=${encodeURIComponent(`/book/${techId}`)}`}
               className="w-full py-3 rounded-xl font-bold text-white text-center block"
               style={{ background: 'linear-gradient(135deg, #f8a5c2, #c56cd6)' }}
             >

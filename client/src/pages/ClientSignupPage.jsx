@@ -1,9 +1,11 @@
 import React, { useState } from 'react';
-import { useNavigate, Link } from 'react-router-dom';
+import { useNavigate, Link, useSearchParams } from 'react-router-dom';
 import { api } from '../lib/api.js';
 
 export default function ClientSignupPage() {
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  const redirect = searchParams.get('redirect');
 
   const [name, setName] = useState('');
   const [phone, setPhone] = useState('');
@@ -20,7 +22,7 @@ export default function ClientSignupPage() {
       const data = await api.post('/api/client-auth/signup', { name, phone, email, password });
       localStorage.setItem('naily_client_token', data.token);
       localStorage.setItem('naily_client_user', JSON.stringify(data.user));
-      navigate('/client/profile');
+      navigate(redirect ? decodeURIComponent(redirect) : '/client/profile');
     } catch (err) {
       setError(err.message || 'שגיאה בהרשמה');
     } finally {

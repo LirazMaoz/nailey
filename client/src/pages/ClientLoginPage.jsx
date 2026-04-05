@@ -20,11 +20,7 @@ export default function ClientLoginPage() {
       const data = await api.post('/api/client-auth/login', { email, password });
       localStorage.setItem('naily_client_token', data.token);
       localStorage.setItem('naily_client_user', JSON.stringify(data.user));
-      if (redirect === 'back') {
-        navigate(-1);
-      } else {
-        navigate('/client/profile');
-      }
+      navigate(redirect ? decodeURIComponent(redirect) : '/client/profile');
     } catch (err) {
       setError(err.message || 'שגיאה בהתחברות');
     } finally {
@@ -94,7 +90,7 @@ export default function ClientLoginPage() {
 
           <p className="text-center text-sm text-gray-500">
             אין לך חשבון?{' '}
-            <Link to="/client/signup" className="text-purple-600 font-semibold underline">
+            <Link to={`/client/signup${redirect ? `?redirect=${redirect}` : ''}`} className="text-purple-600 font-semibold underline">
               הרשמה כאן
             </Link>
           </p>
