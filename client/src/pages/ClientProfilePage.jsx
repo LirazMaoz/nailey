@@ -225,19 +225,25 @@ export default function ClientProfilePage() {
           </div>
 
           {/* Book new appointment */}
-          {getLastTechId() ? (
-            <Link
-              to={`/book/${getLastTechId()}`}
-              className="w-full py-3 rounded-xl font-bold text-white mt-2 max-w-sm text-center block"
-              style={{ background: 'linear-gradient(135deg, #f8a5c2, #c56cd6)' }}
-            >
-              קביעת תורים
-            </Link>
-          ) : (
-            <p className="text-center text-sm text-gray-400 mt-2">
-              לקביעת תור חדש, השתמשי בקישור שקיבלת מהטכנאית שלך
-            </p>
-          )}
+          {(() => {
+            const techId = getLastTechId() || profile?.appointments?.[0]?.tech_id;
+            return techId ? (
+              <Link
+                to={`/book/${techId}`}
+                className="w-full py-3 rounded-xl font-bold text-white mt-2 max-w-sm text-center block"
+                style={{ background: 'linear-gradient(135deg, #f8a5c2, #c56cd6)' }}
+              >
+                קביעת תורים
+              </Link>
+            ) : (
+              <div className="w-full py-3 rounded-xl font-bold text-white mt-2 max-w-sm text-center opacity-60 cursor-not-allowed"
+                style={{ background: 'linear-gradient(135deg, #f8a5c2, #c56cd6)' }}
+                title="השתמשי בקישור שקיבלת מהטכנאית"
+              >
+                קביעת תורים
+              </div>
+            );
+          })()}
         </div>
       </div>
     </div>
