@@ -11,10 +11,13 @@
   html,
   body {
     font-family: 'Heebo', system-ui, sans-serif;
-    background: #fdf0f7;
+    background: #c56cd6;
     min-height: 100vh;
     margin: 0;
     padding: 0;
+    padding-top: env(safe-area-inset-top);
+    padding-left: env(safe-area-inset-left);
+    padding-right: env(safe-area-inset-right);
   }
 
   #root {
