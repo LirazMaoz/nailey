@@ -24,6 +24,13 @@ async function request(path, options = {}) {
   const data = await response.json().catch(() => ({}));
 
   if (!response.ok) {
+    // Auto-clear stale tokens on 401
+    if (response.status === 401) {
+      localStorage.removeItem('naily_token');
+      localStorage.removeItem('naily_user');
+      localStorage.removeItem('naily_client_token');
+      localStorage.removeItem('naily_client_user');
+    }
     const message =
       data?.error ||
       (data?.errors?.[0]?.msg) ||
