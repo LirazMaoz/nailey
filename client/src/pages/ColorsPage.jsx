@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { api } from '../lib/api.js';
 import ColorSwatch from '../components/ColorSwatch.jsx';
 import ColorScanner from '../components/ColorScanner.jsx';
+import NavBar from '../components/NavBar.jsx';
 
 function AddColorForm({ onAdded }) {
   const [form, setForm] = useState({ name: '', number: '', hex: '#f8a5c2' });
@@ -180,91 +181,98 @@ export default function ColorsPage() {
   const outOfStock = colors.filter((c) => c.out_of_stock);
 
   return (
-    <div className="min-h-screen bg-gray-50 flex flex-col">
-      {/* Header */}
-      <div className="bg-tech-gradient text-white px-4 py-5 rounded-b-3xl flex items-center gap-3">
-        <button onClick={() => navigate('/dashboard')} className="text-white/70">
-          &#8594;
-        </button>
-        <div>
-          <h1 className="text-xl font-bold">ניהול צבעים 🎨</h1>
-          <p className="text-purple-light text-sm">{colors.length} צבעים בסך הכל</p>
-        </div>
-      </div>
+    <div dir="rtl" className="min-h-screen bg-gray-50 flex flex-col">
+      <NavBar />
 
-      <div className="flex-1 px-4 py-5 flex flex-col gap-4">
+      <div className="max-w-7xl mx-auto w-full px-4 sm:px-6 lg:px-8 py-6">
+        <div className="flex items-center justify-between mb-6">
+          <div>
+            <h1 className="text-2xl md:text-3xl font-bold text-purple-900">ניהול צבעים 🎨</h1>
+            <p className="text-gray-500 text-sm mt-0.5">{colors.length} צבעים בסך הכל</p>
+          </div>
+        </div>
+
         {error && (
-          <div className="bg-red-50 border border-red-200 text-red-600 rounded-xl px-4 py-3 text-sm">
+          <div className="bg-red-50 border border-red-200 text-red-600 rounded-xl px-4 py-3 text-sm mb-4">
             {error}
           </div>
         )}
 
-        {/* Scanner toggle */}
-        <button
-          onClick={() => setShowScanner((p) => !p)}
-          className="btn-outline text-sm py-2 flex items-center justify-center gap-2"
-        >
-          📷 {showScanner ? 'סגירת סורק' : 'פתיחת סורק צבעים'}
-        </button>
+        {/* Desktop: two column layout; mobile: stacked */}
+        <div className="lg:flex lg:gap-6">
+          {/* Sidebar: scanner + add form */}
+          <div className="lg:w-80 flex flex-col gap-4 mb-6 lg:mb-0">
+            {/* Scanner toggle */}
+            <button
+              onClick={() => setShowScanner((p) => !p)}
+              className="btn-outline text-sm py-2 flex items-center justify-center gap-2"
+            >
+              📷 {showScanner ? 'סגירת סורק' : 'פתיחת סורק צבעים'}
+            </button>
 
-        {showScanner && (
-          <div className="card border-2 border-purple-light fade-in">
-            <ColorScanner onSave={handleScannerSave} />
+            {showScanner && (
+              <div className="card border-2 border-purple-light fade-in">
+                <ColorScanner onSave={handleScannerSave} />
+              </div>
+            )}
+
+            {/* Add form */}
+            <AddColorForm onAdded={handleAdded} />
           </div>
-        )}
 
-        {/* Add form */}
-        <AddColorForm onAdded={handleAdded} />
+          {/* Main: color lists */}
+          <div className="flex-1 flex flex-col gap-4">
+            {loading && (
+              <div className="text-center text-gray-400 py-6">טוענת...</div>
+            )}
 
-        {loading && (
-          <div className="text-center text-gray-400 py-6">טוענת...</div>
-        )}
+            {/* In stock */}
+            {inStock.length > 0 && (
+              <div>
+                <h3 className="text-sm font-bold text-gray-600 mb-2 flex items-center gap-2">
+                  <span className="w-2 h-2 rounded-full bg-green-400 inline-block" />
+                  במלאי ({inStock.length})
+                </h3>
+                <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-2">
+                  {inStock.map((c) => (
+                    <ColorCard
+                      key={c.id}
+                      color={c}
+                      onToggle={handleToggle}
+                      onDelete={handleDelete}
+                    />
+                  ))}
+                </div>
+              </div>
+            )}
 
-        {/* In stock */}
-        {inStock.length > 0 && (
-          <div>
-            <h3 className="text-sm font-bold text-gray-600 mb-2 flex items-center gap-2">
-              <span className="w-2 h-2 rounded-full bg-green-400 inline-block" />
-              במלאי ({inStock.length})
-            </h3>
-            <div className="flex flex-col gap-2">
-              {inStock.map((c) => (
-                <ColorCard
-                  key={c.id}
-                  color={c}
-                  onToggle={handleToggle}
-                  onDelete={handleDelete}
-                />
-              ))}
-            </div>
+            {/* Out of stock */}
+            {outOfStock.length > 0 && (
+              <div>
+                <h3 className="text-sm font-bold text-gray-600 mb-2 flex items-center gap-2">
+                  <span className="w-2 h-2 rounded-full bg-red-400 inline-block" />
+                  אזל מהמלאי ({outOfStock.length})
+                </h3>
+                <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-2">
+                  {outOfStock.map((c) => (
+                    <ColorCard
+                      key={c.id}
+                      color={c}
+                      onToggle={handleToggle}
+                      onDelete={handleDelete}
+                    />
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {!loading && colors.length === 0 && (
+              <div className="text-center py-8 text-gray-400">
+                אין צבעים עדיין — הוסיפי את הראשון!
+              </div>
+            )}
           </div>
-        )}
-
-        {/* Out of stock */}
-        {outOfStock.length > 0 && (
-          <div>
-            <h3 className="text-sm font-bold text-gray-600 mb-2 flex items-center gap-2">
-              <span className="w-2 h-2 rounded-full bg-red-400 inline-block" />
-              אזל מהמלאי ({outOfStock.length})
-            </h3>
-            <div className="flex flex-col gap-2">
-              {outOfStock.map((c) => (
-                <ColorCard
-                  key={c.id}
-                  color={c}
-                  onToggle={handleToggle}
-                  onDelete={handleDelete}
-                />
-              ))}
-            </div>
-          </div>
-        )}
-
-        {!loading && colors.length === 0 && (
-          <div className="text-center py-8 text-gray-400">
-            אין צבעים עדיין — הוסיפי את הראשון!
-          </div>
-        )}
+        </div>
       </div>
     </div>
   );

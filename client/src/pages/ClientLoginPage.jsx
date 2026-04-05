@@ -35,10 +35,10 @@ export default function ClientLoginPage() {
   return (
     <div
       dir="rtl"
-      className="min-h-screen flex flex-col items-center justify-center px-4"
+      className="min-h-screen flex items-center justify-center px-4 py-8"
       style={{ background: 'linear-gradient(135deg, #f8a5c2 0%, #c56cd6 100%)' }}
     >
-      <div className="w-full max-w-[430px]">
+      <div className="w-full max-w-md">
         {/* Header */}
         <div className="text-center mb-8">
           <div className="text-5xl mb-3">💅</div>
@@ -47,7 +47,7 @@ export default function ClientLoginPage() {
         </div>
 
         {/* Card */}
-        <div className="bg-white rounded-3xl shadow-xl p-6 flex flex-col gap-5">
+        <div className="bg-white rounded-3xl shadow-xl p-8 flex flex-col gap-5">
           <h2 className="text-xl font-bold text-purple-800 text-center">כניסה ללקוחות</h2>
 
           {error && (

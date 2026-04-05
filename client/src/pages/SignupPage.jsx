@@ -36,20 +36,22 @@ export default function SignupPage() {
   };
 
   return (
-    <div className="min-h-screen bg-card-gradient flex flex-col">
-      {/* Header */}
-      <div className="bg-tech-gradient text-white text-center py-8 px-6 rounded-b-3xl">
-        <div className="text-4xl mb-2">💅</div>
-        <h1 className="text-3xl font-extrabold">Naily</h1>
-        <p className="text-purple-light mt-1 text-sm">הרשמה כמניקוריסטית</p>
-      </div>
+    <div
+      dir="rtl"
+      className="min-h-screen flex items-center justify-center bg-gradient-to-br from-pink-100 to-purple-100 px-4 py-8"
+    >
+      <div className="w-full max-w-md bg-white rounded-2xl shadow-xl p-8 mx-4">
+        {/* Header */}
+        <div className="text-center mb-6">
+          <div className="text-4xl mb-2">💅</div>
+          <h1 className="text-3xl font-extrabold text-purple-800">Naily</h1>
+          <p className="text-gray-500 mt-1 text-sm">הרשמה כמניקוריסטית</p>
+        </div>
 
-      {/* Form */}
-      <div className="flex-1 px-6 py-6 flex flex-col gap-4">
-        <h2 className="text-2xl font-bold text-purple-deeper text-center">יצירת חשבון</h2>
+        <h2 className="text-2xl font-bold text-purple-deeper text-center mb-5">יצירת חשבון</h2>
 
         {error && (
-          <div className="bg-red-50 border border-red-200 text-red-600 rounded-xl px-4 py-3 text-sm">
+          <div className="bg-red-50 border border-red-200 text-red-600 rounded-xl px-4 py-3 text-sm mb-4">
             {error}
           </div>
         )}
@@ -130,7 +132,7 @@ export default function SignupPage() {
           </button>
         </form>
 
-        <p className="text-center text-gray-500 text-sm">
+        <p className="text-center text-gray-500 text-sm mt-5">
           יש לך כבר חשבון?{' '}
           <Link to="/login" className="text-purple-dark font-semibold underline">
             התחברות

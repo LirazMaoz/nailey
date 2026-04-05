@@ -214,9 +214,11 @@ export default function ColorScanner({ onSave }) {
       {/* Hidden canvas for processing */}
       <canvas ref={canvasRef} className="hidden" />
 
+      {/* Image preview + scanned result: side by side on desktop */}
+      <div className={imageSrc ? 'md:flex md:gap-6 md:items-start' : ''}>
       {/* Image preview */}
       {imageSrc && (
-        <div className="relative rounded-2xl overflow-hidden border-2 border-purple-light">
+        <div className="relative rounded-2xl overflow-hidden border-2 border-purple-light md:flex-1">
           <img src={imageSrc} alt="preview" className="w-full max-h-48 object-cover" />
           {/* Center sample box indicator */}
           <div
@@ -235,9 +237,9 @@ export default function ColorScanner({ onSave }) {
         </div>
       )}
 
-      {/* Scanned result */}
+      {/* Scanned result — inside same flex wrapper as image preview */}
       {scanned && (
-        <div className="card border-2 border-purple-light flex flex-col gap-3 fade-in">
+        <div className="card border-2 border-purple-light flex flex-col gap-3 fade-in md:flex-1 mt-4 md:mt-0">
           <div className="flex items-center gap-4">
             <div
               className="w-16 h-16 rounded-2xl shadow-md border-2 border-white flex-shrink-0"
@@ -308,6 +310,7 @@ export default function ColorScanner({ onSave }) {
           </div>
         </div>
       )}
+      </div>{/* end md:flex wrapper */}
     </div>
   );
 }

@@ -133,7 +133,7 @@ export default function BookingPage() {
   if (authDecision === null) {
     return (
       <div dir="rtl" className="min-h-screen bg-card-gradient flex flex-col items-center justify-center px-4">
-        <div className="w-full max-w-[430px] flex flex-col gap-5 text-center">
+        <div className="w-full max-w-md flex flex-col gap-5 text-center">
           <div className="text-5xl">💅</div>
           <h1 className="text-2xl font-extrabold text-purple-deeper">קביעת תור</h1>
           <p className="text-gray-500 text-sm">רוצה לשמור את היסטוריית התורים שלך?</p>
@@ -238,7 +238,7 @@ export default function BookingPage() {
         ))}
       </div>
 
-      <div className="flex-1 px-4 py-5 flex flex-col gap-4">
+      <div className="flex-1 px-4 py-5 max-w-lg mx-auto w-full flex flex-col gap-4">
         {error && (
           <div className="bg-red-50 border border-red-200 text-red-600 rounded-xl px-4 py-3 text-sm">
             {error}
@@ -279,7 +279,7 @@ export default function BookingPage() {
                 אין שעות פנויות בתאריך זה
               </div>
             )}
-            <div className="grid grid-cols-3 gap-2">
+            <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-6 gap-2">
               {slots.map((slot) => (
                 <button
                   key={slot}
@@ -307,7 +307,7 @@ export default function BookingPage() {
             {colors.length === 0 && (
               <p className="text-gray-400 text-sm text-center py-4">אין צבעים זמינים</p>
             )}
-            <div className="flex flex-col gap-2">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
               {colors.map((c) => (
                 <button
                   key={c.id}

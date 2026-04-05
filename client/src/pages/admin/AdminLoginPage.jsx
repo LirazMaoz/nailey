@@ -35,13 +35,10 @@ export default function AdminLoginPage() {
   return (
     <div
       dir="rtl"
-      className="min-h-screen flex items-center justify-center"
-      style={{ background: '#f3f0f8' }}
+      className="min-h-screen flex items-center justify-center px-4 py-8"
+      style={{ background: 'linear-gradient(135deg, #4c1d95 0%, #312e81 100%)' }}
     >
-      <div
-        className="w-full max-w-sm rounded-2xl shadow-xl p-8 flex flex-col gap-6"
-        style={{ background: 'white' }}
-      >
+      <div className="w-full max-w-md bg-white rounded-2xl shadow-xl p-8 flex flex-col gap-6">
         {/* Logo */}
         <div className="text-center">
           <div
@@ -70,7 +67,7 @@ export default function AdminLoginPage() {
               name="email"
               value={form.email}
               onChange={handleChange}
-              className="w-full border border-gray-200 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:border-purple-400"
+              className="w-full border border-gray-200 rounded-xl px-4 py-3 text-sm focus:outline-none focus:border-purple-400"
               placeholder="admin@naily.app"
               required
               autoComplete="email"
@@ -83,7 +80,7 @@ export default function AdminLoginPage() {
               name="password"
               value={form.password}
               onChange={handleChange}
-              className="w-full border border-gray-200 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:border-purple-400"
+              className="w-full border border-gray-200 rounded-xl px-4 py-3 text-sm focus:outline-none focus:border-purple-400"
               placeholder="••••••••"
               required
               autoComplete="current-password"

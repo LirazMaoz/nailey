@@ -50,7 +50,7 @@ export default function SubscriptionModal({ status }) {
         background: 'linear-gradient(135deg, #f8a5c2 0%, #c56cd6 40%, #7b2ff7 100%)',
       }}
     >
-      <div className="w-full max-w-[480px] mx-4 flex flex-col items-center text-center gap-6">
+      <div className="w-full max-w-2xl mx-4 flex flex-col items-center text-center gap-6">
         {/* Logo */}
         <div>
           <div className="text-6xl mb-2">💅</div>
@@ -77,11 +77,11 @@ export default function SubscriptionModal({ status }) {
         </div>
 
         {/* Plan cards */}
-        <div className="flex gap-4 w-full">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 w-full">
           {PLANS.map((plan) => (
             <div
               key={plan.key}
-              className="flex-1 rounded-2xl p-5 flex flex-col items-center gap-3 relative"
+              className="rounded-2xl p-5 flex flex-col items-center gap-3 relative"
               style={{
                 background: plan.highlight ? 'white' : 'rgba(255,255,255,0.2)',
                 backdropFilter: 'blur(8px)',

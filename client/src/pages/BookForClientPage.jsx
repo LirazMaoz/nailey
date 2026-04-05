@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext.jsx';
 import { api } from '../lib/api.js';
 import ColorSwatch from '../components/ColorSwatch.jsx';
+import NavBar from '../components/NavBar.jsx';
 
 // Generate next 7 days, skip Saturdays
 function getAvailableDates() {
@@ -138,7 +139,7 @@ export default function BookForClientPage() {
   // Success
   if (step === 5 && confirmed) {
     return (
-      <div className="min-h-screen bg-card-gradient flex flex-col items-center justify-center px-6 text-center">
+      <div dir="rtl" className="min-h-screen bg-card-gradient flex flex-col items-center justify-center px-6 text-center">
         <div className="text-6xl mb-4">💅</div>
         <h1 className="text-2xl font-extrabold text-purple-deeper mb-2">התור נקבע!</h1>
         <p className="text-gray-600 mb-6">הלקוחה תקבל הודעת SMS לאישור</p>
@@ -167,40 +168,36 @@ export default function BookForClientPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 flex flex-col">
-      {/* Header */}
-      <div className="bg-tech-gradient text-white px-4 py-5 rounded-b-3xl flex items-center gap-3">
-        <button onClick={() => navigate('/dashboard')} className="text-white/70">
-          &#8594;
-        </button>
-        <div>
-          <h1 className="text-xl font-bold">קביעת תור ללקוחה 📅</h1>
+    <div dir="rtl" className="min-h-screen bg-gray-50 flex flex-col">
+      <NavBar />
+
+      <div className="max-w-lg mx-auto w-full px-4 py-5 flex flex-col gap-4">
+        <div className="flex items-center gap-3 mb-2">
+          <h1 className="text-xl md:text-2xl font-bold text-purple-900">קביעת תור ללקוחה 📅</h1>
         </div>
-      </div>
 
-      {/* Step indicator */}
-      <div className="px-4 pt-4 flex justify-center gap-2">
-        {STEPS.map((label, i) => (
-          <div key={i} className="flex flex-col items-center gap-1">
-            <div
-              className={`w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold transition-colors ${
-                i < step
-                  ? 'bg-purple-dark text-white'
-                  : i === step
-                  ? 'bg-tech-gradient text-white shadow-md'
-                  : 'bg-gray-200 text-gray-400'
-              }`}
-            >
-              {i < step ? '✓' : i + 1}
+        {/* Step indicator */}
+        <div className="flex justify-center gap-2">
+          {STEPS.map((label, i) => (
+            <div key={i} className="flex flex-col items-center gap-1">
+              <div
+                className={`w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold transition-colors ${
+                  i < step
+                    ? 'bg-purple-dark text-white'
+                    : i === step
+                    ? 'bg-tech-gradient text-white shadow-md'
+                    : 'bg-gray-200 text-gray-400'
+                }`}
+              >
+                {i < step ? '✓' : i + 1}
+              </div>
+              <span className={`text-xs ${i === step ? 'text-purple-dark font-semibold' : 'text-gray-400'}`}>
+                {label}
+              </span>
             </div>
-            <span className={`text-xs ${i === step ? 'text-purple-dark font-semibold' : 'text-gray-400'}`}>
-              {label}
-            </span>
-          </div>
-        ))}
-      </div>
+          ))}
+        </div>
 
-      <div className="flex-1 px-4 py-5 flex flex-col gap-4">
         {error && (
           <div className="bg-red-50 border border-red-200 text-red-600 rounded-xl px-4 py-3 text-sm">
             {error}
@@ -305,7 +302,7 @@ export default function BookForClientPage() {
             {!loadingSlots && slots.length === 0 && (
               <div className="text-center py-6 text-gray-500">אין שעות פנויות</div>
             )}
-            <div className="grid grid-cols-3 gap-2">
+            <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-6 gap-2">
               {slots.map((slot) => (
                 <button
                   key={slot}
@@ -333,7 +330,7 @@ export default function BookForClientPage() {
             {colors.length === 0 && (
               <p className="text-gray-400 text-sm text-center py-4">אין צבעים זמינים</p>
             )}
-            <div className="flex flex-col gap-2">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
               {colors.map((c) => (
                 <button
                   key={c.id}
