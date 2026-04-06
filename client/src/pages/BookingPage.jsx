@@ -25,7 +25,7 @@ function formatDateHebrew(date) {
 }
 
 function dateToISO(date) {
-  return date.toISOString().split('T')[0];
+  return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
 }
 
 const STEPS = ['תאריך', 'שעה', 'צבע', 'פרטים', 'אישור'];

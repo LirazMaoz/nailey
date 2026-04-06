@@ -61,6 +61,24 @@ router.get('/slots', async (req, res) => {
   }
 });
 
+// GET /api/appointments/calendar?year= — dates with appointment counts for year calendar
+router.get('/calendar', requireAuth, requireSubscription, async (req, res) => {
+  const year = parseInt(req.query.year) || new Date().getFullYear();
+  try {
+    const { rows } = await pool.query(
+      `SELECT date::text, COUNT(*) AS count
+       FROM appointments
+       WHERE tech_id = $1 AND status NOT IN ('cancelled') AND EXTRACT(YEAR FROM date) = $2
+       GROUP BY date ORDER BY date`,
+      [req.user.id, year]
+    );
+    return res.json(rows);
+  } catch (err) {
+    console.error(err);
+    return res.status(500).json({ error: 'שגיאת שרת' });
+  }
+});
+
 // GET /api/appointments — tech's appointments (optional ?date=)
 router.get('/', requireAuth, requireSubscription, async (req, res) => {
   const { date } = req.query;
@@ -76,7 +94,7 @@ router.get('/', requireAuth, requireSubscription, async (req, res) => {
       FROM appointments
       LEFT JOIN clients ON appointments.client_id = clients.id
       LEFT JOIN colors  ON appointments.color_id  = colors.id
-      WHERE appointments.tech_id = $1
+      WHERE appointments.tech_id = $1 AND appointments.status != 'cancelled'
     `;
     const params = [req.user.id];
 
@@ -247,7 +265,7 @@ router.delete('/:id', requireAuth, requireSubscription, async (req, res) => {
   }
 });
 
-// PATCH /api/appointments/:id/cancel — client cancels their own appointment
+// PATCH /api/appointments/:id/cancel — client cancels their own appointment (24h rule)
 router.patch('/:id/cancel', async (req, res) => {
   const { id } = req.params;
   const token = req.headers.authorization?.split(' ')[1];
@@ -257,11 +275,27 @@ router.patch('/:id/cancel', async (req, res) => {
     const payload = jwt.verify(token, process.env.JWT_SECRET);
     if (payload.role !== 'client') return res.status(403).json({ error: 'Forbidden' });
 
-    const { rows } = await pool.query(
-      "UPDATE appointments SET status = 'cancelled' WHERE id = $1 AND client_id = $2 AND status = 'pending' RETURNING id",
-      [id, payload.id]
+    const { rows: apptRows } = await pool.query(
+      'SELECT id, date, time, status, client_id FROM appointments WHERE id = $1',
+      [id]
     );
-    if (rows.length === 0) return res.status(404).json({ error: 'תור לא נמצא או שלא ניתן לבטלו' });
+    if (apptRows.length === 0) return res.status(404).json({ error: 'תור לא נמצא' });
+    const appt = apptRows[0];
+    if (appt.client_id !== payload.id) return res.status(403).json({ error: 'Forbidden' });
+    if (appt.status !== 'pending') return res.status(400).json({ error: 'ניתן לבטל רק תורים ממתינים' });
+
+    // Enforce 24-hour cancellation window
+    const dateStr = appt.date instanceof Date
+      ? appt.date.toISOString().split('T')[0]
+      : String(appt.date).split('T')[0];
+    const timeStr = String(appt.time).slice(0, 5);
+    const apptDateTime = new Date(`${dateStr}T${timeStr}:00`);
+    const hoursUntil = (apptDateTime - new Date()) / (1000 * 60 * 60);
+    if (hoursUntil < 24) {
+      return res.status(400).json({ error: 'לא ניתן לבטל תור פחות מ-24 שעות לפני המועד' });
+    }
+
+    await pool.query("UPDATE appointments SET status = 'cancelled' WHERE id = $1", [id]);
     return res.json({ message: 'התור בוטל' });
   } catch (err) {
     console.error(err);

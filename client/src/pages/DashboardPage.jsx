@@ -7,46 +7,111 @@ import NavBar from '../components/NavBar.jsx';
 import { useSubscription } from '../hooks/useSubscription.js';
 import SubscriptionModal from '../components/SubscriptionModal.jsx';
 
-function todayISO() {
-  return new Date().toISOString().split('T')[0];
+function localISO(date = new Date()) {
+  return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
+}
+
+const HEBREW_MONTHS = ['ינואר','פברואר','מרץ','אפריל','מאי','יוני','יולי','אוגוסט','ספטמבר','אוקטובר','נובמבר','דצמבר'];
+const DAY_LETTERS = ['א','ב','ג','ד','ה','ו','ש'];
+
+function MonthGrid({ year, month, markedDates, selectedDate, onSelect }) {
+  const firstDay = new Date(year, month, 1).getDay();
+  const daysInMonth = new Date(year, month + 1, 0).getDate();
+  const todayISO = localISO();
+  const cells = [];
+  for (let i = 0; i < firstDay; i++) cells.push(null);
+  for (let d = 1; d <= daysInMonth; d++) {
+    cells.push(`${year}-${String(month + 1).padStart(2, '0')}-${String(d).padStart(2, '0')}`);
+  }
+  return (
+    <div className="bg-white rounded-2xl border border-purple-100 shadow-sm p-3">
+      <p className="text-center text-xs font-bold text-purple-700 mb-2">{HEBREW_MONTHS[month]}</p>
+      <div className="grid grid-cols-7 gap-px">
+        {DAY_LETTERS.map((l) => (
+          <div key={l} className="text-center text-gray-400 text-xs py-0.5">{l}</div>
+        ))}
+        {cells.map((iso, i) => (
+          <div key={i}>
+            {iso ? (
+              <button
+                onClick={() => onSelect(iso)}
+                className={`w-full aspect-square flex items-center justify-center text-xs rounded-lg font-medium transition-colors
+                  ${selectedDate === iso
+                    ? 'bg-purple-600 text-white font-bold'
+                    : markedDates.has(iso)
+                    ? 'bg-red-100 text-red-700 font-bold hover:bg-red-200'
+                    : iso === todayISO
+                    ? 'bg-purple-100 text-purple-700 hover:bg-purple-200'
+                    : 'text-gray-700 hover:bg-gray-100'
+                  }`}
+              >
+                {parseInt(iso.split('-')[2])}
+              </button>
+            ) : <div />}
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function YearCalendar({ markedDates, selectedDate, onSelect }) {
+  const year = new Date().getFullYear();
+  return (
+    <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3">
+      {Array.from({ length: 12 }, (_, m) => (
+        <MonthGrid key={m} year={year} month={m} markedDates={markedDates} selectedDate={selectedDate} onSelect={onSelect} />
+      ))}
+    </div>
+  );
 }
 
 export default function DashboardPage() {
-  const { user, logout } = useAuth();
+  const { user } = useAuth();
   const navigate = useNavigate();
   const { status: subStatus, loading: subLoading, isBlocked } = useSubscription();
   const [trialBannerDismissed, setTrialBannerDismissed] = useState(false);
 
+  const todayStr = localISO();
+  const [selectedDate, setSelectedDate] = useState(todayStr);
   const [appointments, setAppointments] = useState([]);
   const [outOfStockCount, setOutOfStockCount] = useState(0);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [showShareModal, setShowShareModal] = useState(false);
   const [topColors, setTopColors] = useState([]);
+  const [calendarMarked, setCalendarMarked] = useState(new Set());
+  const [showCalendar, setShowCalendar] = useState(false);
   const evtSourceRef = useRef(null);
 
-  const today = todayISO();
-
-  const loadData = useCallback(async () => {
+  // Load appointments for selected date
+  const loadAppointments = useCallback(async (date) => {
     setLoading(true);
     setError('');
     try {
-      const [apptData, colorsData] = await Promise.all([
-        api.get(`/api/appointments?date=${today}`),
-        api.get('/api/colors'),
-      ]);
+      const apptData = await api.get(`/api/appointments?date=${date}`);
       setAppointments(apptData);
-      setOutOfStockCount(colorsData.filter((c) => c.out_of_stock).length);
     } catch (err) {
       setError(err.message);
     } finally {
       setLoading(false);
     }
-  }, [today]);
+  }, []);
+
+  // Load colors + calendar data once
+  useEffect(() => {
+    api.get('/api/colors').then((data) => {
+      setOutOfStockCount((data || []).filter((c) => c.out_of_stock).length);
+    }).catch(() => {});
+
+    api.get(`/api/appointments/calendar?year=${new Date().getFullYear()}`).then((rows) => {
+      setCalendarMarked(new Set(rows.map((r) => r.date)));
+    }).catch(() => {});
+  }, []);
 
   useEffect(() => {
-    loadData();
-  }, [loadData]);
+    loadAppointments(selectedDate);
+  }, [selectedDate, loadAppointments]);
 
   // SSE for top colors
   useEffect(() => {
@@ -54,42 +119,38 @@ export default function DashboardPage() {
     const evtSource = new EventSource(`/api/stats/top-colors/stream?techId=${user.id}`);
     evtSourceRef.current = evtSource;
     evtSource.onmessage = (e) => {
-      try {
-        setTopColors(JSON.parse(e.data));
-      } catch {
-        // ignore parse errors
-      }
+      try { setTopColors(JSON.parse(e.data)); } catch {}
     };
-    evtSource.onerror = () => {
-      evtSource.close();
-    };
-    return () => {
-      evtSource.close();
-    };
+    evtSource.onerror = () => evtSource.close();
+    return () => evtSource.close();
   }, [user?.id]);
 
   const handleStatusChange = (updated) => {
-    setAppointments((prev) =>
-      prev.map((a) => (a.id === updated.id ? { ...a, ...updated } : a))
-    );
+    setAppointments((prev) => prev.map((a) => (a.id === updated.id ? { ...a, ...updated } : a)));
   };
 
   const handleDelete = (id) => {
     setAppointments((prev) => prev.filter((a) => a.id !== id));
+    // Refresh calendar marks if last appointment on that date
+    api.get(`/api/appointments/calendar?year=${new Date().getFullYear()}`).then((rows) => {
+      setCalendarMarked(new Set(rows.map((r) => r.date)));
+    }).catch(() => {});
+  };
+
+  const handleSelectDate = (iso) => {
+    setSelectedDate(iso);
+    setShowCalendar(false);
+  };
+
+  const formatSelectedDate = (iso) => {
+    const d = new Date(iso + 'T12:00:00');
+    return d.toLocaleDateString('he-IL', { weekday: 'long', day: 'numeric', month: 'long' });
   };
 
   const bookingLink = `${window.location.origin}/book/${user?.username || user?.id}`;
+  const copyLink = () => navigator.clipboard.writeText(bookingLink).then(() => alert('הקישור הועתק!'));
 
-  const copyLink = () => {
-    navigator.clipboard.writeText(bookingLink).then(() => {
-      alert('הקישור הועתק!');
-    });
-  };
-
-  // Show paywall if subscription is blocked
-  if (!subLoading && isBlocked) {
-    return <SubscriptionModal status={subStatus} />;
-  }
+  if (!subLoading && isBlocked) return <SubscriptionModal status={subStatus} />;
 
   return (
     <div dir="rtl" className="min-h-screen bg-gray-50 flex flex-col">
@@ -97,126 +158,117 @@ export default function DashboardPage() {
 
       {/* Trial banner */}
       {!subLoading && subStatus?.access === 'trial_active' && !trialBannerDismissed && (
-        <div
-          className="flex items-center justify-between px-4 py-2 text-sm font-semibold text-white"
-          style={{ background: 'linear-gradient(90deg, #f8a5c2, #c56cd6)' }}
-        >
-          <span>
-            ניסיון חינמי — נותרו {subStatus.days_left} ימים
-          </span>
+        <div className="flex items-center justify-between px-4 py-2 text-sm font-semibold text-white"
+          style={{ background: 'linear-gradient(90deg, #f8a5c2, #c56cd6)' }}>
+          <span>ניסיון חינמי — נותרו {subStatus.days_left} ימים</span>
           <div className="flex items-center gap-3">
             <button
-              onClick={() => {
-                api.post('/api/subscriptions/checkout', { plan: 'monthly' })
-                  .then((d) => d.url && window.open(d.url, '_blank'))
-                  .catch(() => {});
-              }}
+              onClick={() => api.post('/api/subscriptions/checkout', { plan: 'monthly' })
+                .then((d) => d.url && window.open(d.url, '_blank')).catch(() => {})}
               className="bg-white text-purple-700 rounded-lg px-3 py-0.5 text-xs font-bold"
-            >
-              שדרגי עכשיו
-            </button>
-            <button
-              onClick={() => setTrialBannerDismissed(true)}
-              className="text-white/80 hover:text-white text-lg leading-none"
-            >
-              ×
-            </button>
+            >שדרגי עכשיו</button>
+            <button onClick={() => setTrialBannerDismissed(true)} className="text-white/80 hover:text-white text-lg leading-none">×</button>
           </div>
         </div>
       )}
 
-      {/* Page wrapper */}
       <div className="max-w-7xl mx-auto w-full px-4 sm:px-6 lg:px-8 py-6 flex flex-col gap-6">
         {/* Greeting */}
-        <div className="flex items-center justify-between">
-          <div>
-            <h1 className="text-2xl md:text-3xl font-bold text-purple-900">
-              היי, {user?.name || 'מניקוריסטית'} 💅
-            </h1>
-            <p className="text-gray-500 text-sm mt-0.5">
-              {new Date().toLocaleDateString('he-IL', {
-                weekday: 'long',
-                day: 'numeric',
-                month: 'long',
-              })}
-            </p>
-          </div>
+        <div>
+          <h1 className="text-2xl md:text-3xl font-bold text-purple-900">
+            היי, {user?.name || 'מניקוריסטית'} 💅
+          </h1>
+          <p className="text-gray-500 text-sm mt-0.5">
+            {new Date().toLocaleDateString('he-IL', { weekday: 'long', day: 'numeric', month: 'long' })}
+          </p>
         </div>
 
         {/* Stats cards */}
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
           <div className="bg-white rounded-2xl shadow-sm border border-purple-100 p-4 text-center">
             <p className="text-3xl font-extrabold text-purple-700">{appointments.length}</p>
-            <p className="text-sm text-gray-500 mt-1">תורים היום</p>
+            <p className="text-sm text-gray-500 mt-1">תורים {selectedDate === todayStr ? 'היום' : formatSelectedDate(selectedDate)}</p>
           </div>
-          <div
-            className={`bg-white rounded-2xl shadow-sm border p-4 text-center ${
-              outOfStockCount > 0 ? 'border-red-200' : 'border-purple-100'
-            }`}
-          >
-            <p className={`text-3xl font-extrabold ${outOfStockCount > 0 ? 'text-red-500' : 'text-gray-700'}`}>
-              {outOfStockCount}
-            </p>
-            <p className="text-sm text-gray-500 mt-1">
-              {outOfStockCount > 0 ? '⚠️ צבעים חסרים' : 'צבעים חסרים'}
-            </p>
+          <div className={`bg-white rounded-2xl shadow-sm border p-4 text-center ${outOfStockCount > 0 ? 'border-red-200' : 'border-purple-100'}`}>
+            <p className={`text-3xl font-extrabold ${outOfStockCount > 0 ? 'text-red-500' : 'text-gray-700'}`}>{outOfStockCount}</p>
+            <p className="text-sm text-gray-500 mt-1">{outOfStockCount > 0 ? '⚠️ צבעים חסרים' : 'צבעים חסרים'}</p>
           </div>
         </div>
 
         {/* Quick actions */}
         <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-          <button
-            onClick={() => navigate('/colors')}
-            className="bg-white rounded-2xl shadow-sm border border-purple-100 p-4 flex flex-col items-center gap-2 active:scale-95 transition-transform hover:border-purple-300"
-          >
+          <button onClick={() => navigate('/colors')}
+            className="bg-white rounded-2xl shadow-sm border border-purple-100 p-4 flex flex-col items-center gap-2 active:scale-95 transition-transform hover:border-purple-300">
             <span className="text-3xl">🎨</span>
             <span className="text-sm font-semibold text-gray-700">ניהול צבעים</span>
           </button>
-          <button
-            onClick={() => navigate('/book-for-client')}
-            className="bg-white rounded-2xl shadow-sm border border-purple-100 p-4 flex flex-col items-center gap-2 active:scale-95 transition-transform hover:border-purple-300"
-          >
+          <button onClick={() => navigate('/book-for-client')}
+            className="bg-white rounded-2xl shadow-sm border border-purple-100 p-4 flex flex-col items-center gap-2 active:scale-95 transition-transform hover:border-purple-300">
             <span className="text-3xl">📅</span>
             <span className="text-sm font-semibold text-gray-700">קביעת תור</span>
           </button>
-          <button
-            onClick={() => setShowShareModal(true)}
-            className="bg-white rounded-2xl shadow-sm border border-purple-100 p-4 flex flex-col items-center gap-2 active:scale-95 transition-transform hover:border-purple-300"
-          >
+          <button onClick={() => setShowShareModal(true)}
+            className="bg-white rounded-2xl shadow-sm border border-purple-100 p-4 flex flex-col items-center gap-2 active:scale-95 transition-transform hover:border-purple-300">
             <span className="text-3xl">🔗</span>
             <span className="text-sm font-semibold text-gray-700">שיתוף קישור</span>
           </button>
+          <button onClick={() => navigate('/availability')}
+            className="bg-white rounded-2xl shadow-sm border border-purple-100 p-4 flex flex-col items-center gap-2 active:scale-95 transition-transform hover:border-purple-300">
+            <span className="text-3xl">🗓️</span>
+            <span className="text-sm font-semibold text-gray-700">זמינות</span>
+          </button>
         </div>
 
-        {/* Main content: appointments + sidebar */}
+        {/* Main content */}
         <div className="lg:flex lg:gap-6">
-          {/* Appointments list */}
+          {/* Left: calendar + appointments */}
           <div className="flex-1 flex flex-col gap-4">
-            <h2 className="text-lg font-bold text-purple-deeper">תורים היום</h2>
+            {/* Year calendar toggle */}
+            <div>
+              <button
+                onClick={() => setShowCalendar((p) => !p)}
+                className="flex items-center gap-2 text-purple-700 font-bold text-base hover:text-purple-900 transition-colors"
+              >
+                <span>📆</span>
+                <span>יומן שנתי</span>
+                <span className="text-sm font-normal text-gray-400">{showCalendar ? '▲ סגור' : '▼ פתח'}</span>
+              </button>
+              {showCalendar && (
+                <div className="mt-3">
+                  <YearCalendar
+                    markedDates={calendarMarked}
+                    selectedDate={selectedDate}
+                    onSelect={handleSelectDate}
+                  />
+                </div>
+              )}
+            </div>
 
-            {loading && (
-              <div className="text-center text-gray-400 py-10">טוענת...</div>
-            )}
+            {/* Appointments list */}
+            <div className="flex items-center justify-between">
+              <h2 className="text-lg font-bold text-purple-deeper">
+                תורים — {selectedDate === todayStr ? 'היום' : formatSelectedDate(selectedDate)}
+              </h2>
+              {selectedDate !== todayStr && (
+                <button onClick={() => setSelectedDate(todayStr)} className="text-xs text-purple-600 underline font-semibold">
+                  חזרה להיום
+                </button>
+              )}
+            </div>
 
+            {loading && <div className="text-center text-gray-400 py-10">טוענת...</div>}
             {error && (
-              <div className="bg-red-50 border border-red-200 text-red-600 rounded-xl px-4 py-3 text-sm">
-                {error}
-              </div>
+              <div className="bg-red-50 border border-red-200 text-red-600 rounded-xl px-4 py-3 text-sm">{error}</div>
             )}
-
             {!loading && appointments.length === 0 && (
               <div className="text-center py-12">
                 <div className="text-5xl mb-3">🌸</div>
-                <p className="text-gray-500">אין תורים להיום</p>
-                <button
-                  onClick={() => navigate('/book-for-client')}
-                  className="btn-primary mt-4 max-w-xs mx-auto"
-                >
+                <p className="text-gray-500">אין תורים ביום זה</p>
+                <button onClick={() => navigate('/book-for-client')} className="btn-primary mt-4 max-w-xs mx-auto">
                   קבעי תור ראשון
                 </button>
               </div>
             )}
-
             <div className="flex flex-col gap-3">
               {appointments.map((appt) => (
                 <AppointmentCard
@@ -231,20 +283,14 @@ export default function DashboardPage() {
 
           {/* Sidebar: booking link + top colors */}
           <div className="lg:w-80 flex flex-col gap-4 mt-4 lg:mt-0">
-            {/* Booking link */}
             <div>
               <h2 className="text-lg font-bold text-purple-deeper mb-2">קישור הזמנה</h2>
               <div className="bg-white rounded-2xl shadow-sm border border-purple-100 p-4 flex flex-col gap-3">
                 <p className="text-sm text-gray-500">שלחי ללקוחות שלך:</p>
-                <div
-                  className="bg-purple-50 rounded-xl px-3 py-2 text-xs font-mono break-all text-gray-700 border border-purple-100"
-                  dir="ltr"
-                >
+                <div className="bg-purple-50 rounded-xl px-3 py-2 text-xs font-mono break-all text-gray-700 border border-purple-100" dir="ltr">
                   {bookingLink}
                 </div>
-                <button onClick={copyLink} className="btn-outline text-sm py-2">
-                  📋 העתקת קישור
-                </button>
+                <button onClick={copyLink} className="btn-outline text-sm py-2">📋 העתקת קישור</button>
               </div>
             </div>
 
@@ -253,10 +299,7 @@ export default function DashboardPage() {
               <div className="flex items-center gap-2 mb-2">
                 <h2 className="text-lg font-bold text-purple-deeper">Top 10 צבעים</h2>
                 <span className="flex items-center gap-1 text-xs text-green-600 font-semibold">
-                  <span
-                    className="inline-block w-2 h-2 rounded-full bg-green-500"
-                    style={{ animation: 'pulse 2s infinite' }}
-                  />
+                  <span className="inline-block w-2 h-2 rounded-full bg-green-500" style={{ animation: 'pulse 2s infinite' }} />
                   עדכון בזמן אמת
                 </span>
               </div>
@@ -279,10 +322,7 @@ export default function DashboardPage() {
                         <tr key={c.id} className="border-t border-gray-50">
                           <td className="py-2 px-3 text-gray-400 font-bold">{i + 1}</td>
                           <td className="py-2 px-3">
-                            <div
-                              className="rounded-full border border-gray-200"
-                              style={{ width: 20, height: 20, backgroundColor: c.hex }}
-                            />
+                            <div className="rounded-full border border-gray-200" style={{ width: 20, height: 20, backgroundColor: c.hex }} />
                           </td>
                           <td className="py-2 px-3 text-gray-800 font-medium">{c.name}</td>
                           <td className="py-2 px-3 text-gray-400 font-mono text-xs" dir="ltr">{c.number}</td>
@@ -300,33 +340,13 @@ export default function DashboardPage() {
 
       {/* Share modal */}
       {showShareModal && (
-        <div
-          className="fixed inset-0 bg-black/50 flex items-end sm:items-center justify-center z-50"
-          onClick={() => setShowShareModal(false)}
-        >
-          <div
-            className="bg-white w-full sm:max-w-md sm:rounded-3xl rounded-t-3xl p-6 flex flex-col gap-4"
-            onClick={(e) => e.stopPropagation()}
-          >
+        <div className="fixed inset-0 bg-black/50 flex items-end sm:items-center justify-center z-50" onClick={() => setShowShareModal(false)}>
+          <div className="bg-white w-full sm:max-w-md sm:rounded-3xl rounded-t-3xl p-6 flex flex-col gap-4" onClick={(e) => e.stopPropagation()}>
             <h3 className="text-lg font-bold text-purple-deeper">קישור הזמנת תורים</h3>
-            <p className="text-sm text-gray-500">
-              שלחי את הקישור הזה ללקוחות שלך כדי שיוכלו לקבוע תורים בעצמן:
-            </p>
-            <div
-              className="bg-purple-light/30 rounded-xl px-3 py-3 text-sm font-mono break-all text-gray-700"
-              dir="ltr"
-            >
-              {bookingLink}
-            </div>
-            <button onClick={copyLink} className="btn-primary">
-              📋 העתקת קישור
-            </button>
-            <button
-              onClick={() => setShowShareModal(false)}
-              className="btn-outline"
-            >
-              סגירה
-            </button>
+            <p className="text-sm text-gray-500">שלחי את הקישור הזה ללקוחות שלך כדי שיוכלו לקבוע תורים בעצמן:</p>
+            <div className="bg-purple-light/30 rounded-xl px-3 py-3 text-sm font-mono break-all text-gray-700" dir="ltr">{bookingLink}</div>
+            <button onClick={copyLink} className="btn-primary">📋 העתקת קישור</button>
+            <button onClick={() => setShowShareModal(false)} className="btn-outline">סגירה</button>
           </div>
         </div>
       )}

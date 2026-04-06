@@ -14,7 +14,13 @@ router.get('/search', requireAuth, requireSubscription, async (req, res) => {
 
   try {
     const { rows } = await pool.query(
-      'SELECT id, name, phone FROM clients WHERE tech_id = $1 AND name ILIKE $2 ORDER BY name LIMIT 10',
+      `SELECT DISTINCT c.id, c.name, c.phone
+       FROM clients c
+       WHERE c.name ILIKE $2
+         AND (c.tech_id = $1 OR EXISTS (
+           SELECT 1 FROM appointments a WHERE a.client_id = c.id AND a.tech_id = $1
+         ))
+       ORDER BY c.name LIMIT 10`,
       [req.user.id, `%${q.trim()}%`]
     );
     return res.json(rows);
