@@ -93,3 +93,21 @@ CREATE TABLE IF NOT EXISTS availability (
   end_time TIME NOT NULL DEFAULT '18:00',
   UNIQUE(tech_id, day_of_week)
 );
+
+CREATE TABLE IF NOT EXISTS availability_overrides (
+  id SERIAL PRIMARY KEY,
+  tech_id INT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  date DATE NOT NULL,
+  is_closed BOOLEAN NOT NULL DEFAULT true,
+  note TEXT,
+  UNIQUE(tech_id, date)
+);
+
+CREATE TABLE IF NOT EXISTS push_subscriptions (
+  id SERIAL PRIMARY KEY,
+  user_id INT NOT NULL,
+  role TEXT NOT NULL CHECK (role IN ('tech','client','admin')),
+  subscription JSONB NOT NULL,
+  created_at TIMESTAMPTZ DEFAULT NOW(),
+  UNIQUE(user_id, role)
+);

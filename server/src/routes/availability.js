@@ -59,4 +59,52 @@ router.put('/', requireAuth, requireSubscription, async (req, res) => {
   }
 });
 
+// GET /api/availability/overrides — list date-specific overrides for tech
+router.get('/overrides', requireAuth, requireSubscription, async (req, res) => {
+  try {
+    const { rows } = await pool.query(
+      'SELECT id, date::text, is_closed, note FROM availability_overrides WHERE tech_id = $1 ORDER BY date',
+      [req.user.id]
+    );
+    return res.json(rows);
+  } catch (err) {
+    console.error('overrides GET error:', err);
+    return res.status(500).json({ error: 'שגיאת שרת' });
+  }
+});
+
+// PUT /api/availability/overrides — upsert a single date override
+// Body: { date, is_closed, note }
+router.put('/overrides', requireAuth, requireSubscription, async (req, res) => {
+  const { date, is_closed, note } = req.body;
+  if (!date) return res.status(400).json({ error: 'תאריך חסר' });
+  try {
+    await pool.query(
+      `INSERT INTO availability_overrides (tech_id, date, is_closed, note)
+       VALUES ($1, $2, $3, $4)
+       ON CONFLICT (tech_id, date) DO UPDATE
+         SET is_closed = EXCLUDED.is_closed, note = EXCLUDED.note`,
+      [req.user.id, date, is_closed ?? true, note || null]
+    );
+    return res.json({ message: 'נשמר' });
+  } catch (err) {
+    console.error('overrides PUT error:', err);
+    return res.status(500).json({ error: 'שגיאת שרת' });
+  }
+});
+
+// DELETE /api/availability/overrides/:date — remove override for a date
+router.delete('/overrides/:date', requireAuth, requireSubscription, async (req, res) => {
+  try {
+    await pool.query(
+      'DELETE FROM availability_overrides WHERE tech_id = $1 AND date = $2',
+      [req.user.id, req.params.date]
+    );
+    return res.json({ message: 'נמחק' });
+  } catch (err) {
+    console.error('overrides DELETE error:', err);
+    return res.status(500).json({ error: 'שגיאת שרת' });
+  }
+});
+
 export default router;

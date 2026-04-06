@@ -14,6 +14,7 @@ import statsRouter from './routes/stats.js';
 import subscriptionsRouter from './routes/subscriptions.js';
 import adminRouter from './routes/admin.js';
 import availabilityRouter from './routes/availability.js';
+import pushRouter from './routes/push.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const app = express();
@@ -37,6 +38,7 @@ app.use('/api/stats', statsRouter);
 app.use('/api/subscriptions', subscriptionsRouter);
 app.use('/api/admin', adminRouter);
 app.use('/api/availability', availabilityRouter);
+app.use('/api/push', pushRouter);
 
 // GET /api/tech/:techRef — public, returns { id, name, username } for booking page
 app.get('/api/tech/:techRef', async (req, res) => {

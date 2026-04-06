@@ -4,6 +4,7 @@ import jwt from 'jsonwebtoken';
 import { pool } from '../lib/db.js';
 import { requireAuth, requireSubscription } from '../middleware/auth.js';
 import { sendAppointmentSMS } from '../services/sms.js';
+import { sendPushToUser } from '../services/push.js';
 
 const router = Router();
 
@@ -28,6 +29,15 @@ router.get('/slots', async (req, res) => {
   }
 
   try {
+    // Check date-specific override first
+    const { rows: overrides } = await pool.query(
+      'SELECT is_closed, note FROM availability_overrides WHERE tech_id = $1 AND date = $2',
+      [techId, date]
+    );
+    if (overrides.length > 0 && overrides[0].is_closed) {
+      return res.json({ slots: [], note: overrides[0].note });
+    }
+
     // Check tech's availability for this day of week
     const dayOfWeek = new Date(date + 'T12:00:00').getDay(); // noon to avoid TZ shift
     const { rows: avail } = await pool.query(
@@ -218,6 +228,14 @@ router.post(
         colorName,
       });
 
+      // Push notification to tech when client books
+      if (bookedBy === 'client') {
+        sendPushToUser(techId, 'tech', {
+          title: 'תור חדש נקבע 💅',
+          body: `${resolvedName} קבעה תור ל-${date} בשעה ${time}`,
+        });
+      }
+
       return res.status(201).json({ appointment: appt, sms: smsResult });
     } catch (err) {
       console.error(err);
@@ -254,10 +272,22 @@ router.delete('/:id', requireAuth, requireSubscription, async (req, res) => {
   const { id } = req.params;
   try {
     const { rows } = await pool.query(
-      "UPDATE appointments SET status = 'cancelled' WHERE id = $1 AND tech_id = $2 RETURNING id",
+      "UPDATE appointments SET status = 'cancelled' WHERE id = $1 AND tech_id = $2 RETURNING id, client_id, date, time",
       [id, req.user.id]
     );
     if (rows.length === 0) return res.status(404).json({ error: 'תור לא נמצא' });
+
+    // Push notification to client
+    const appt = rows[0];
+    if (appt.client_id) {
+      const dateStr = String(appt.date).split('T')[0];
+      const timeStr = String(appt.time).slice(0, 5);
+      sendPushToUser(appt.client_id, 'client', {
+        title: 'התור שלך בוטל',
+        body: `התור שקבעת ל-${dateStr} בשעה ${timeStr} בוטל על ידי הטכנאית`,
+      });
+    }
+
     return res.json({ message: 'התור בוטל' });
   } catch (err) {
     console.error(err);
@@ -285,9 +315,7 @@ router.patch('/:id/cancel', async (req, res) => {
     if (appt.status !== 'pending') return res.status(400).json({ error: 'ניתן לבטל רק תורים ממתינים' });
 
     // Enforce 24-hour cancellation window
-    const dateStr = appt.date instanceof Date
-      ? appt.date.toISOString().split('T')[0]
-      : String(appt.date).split('T')[0];
+    const dateStr = String(appt.date).split('T')[0];
     const timeStr = String(appt.time).slice(0, 5);
     const apptDateTime = new Date(`${dateStr}T${timeStr}:00`);
     const hoursUntil = (apptDateTime - new Date()) / (1000 * 60 * 60);
@@ -296,6 +324,21 @@ router.patch('/:id/cancel', async (req, res) => {
     }
 
     await pool.query("UPDATE appointments SET status = 'cancelled' WHERE id = $1", [id]);
+
+    // Push notification to tech
+    const { rows: techRows } = await pool.query(
+      'SELECT tech_id FROM appointments WHERE id = $1',
+      [id]
+    );
+    if (techRows.length > 0) {
+      const clientRows2 = await pool.query('SELECT name, phone FROM clients WHERE id = $1', [appt.client_id]);
+      const clientInfo = clientRows2.rows[0];
+      sendPushToUser(techRows[0].tech_id, 'tech', {
+        title: 'לקוחה ביטלה תור',
+        body: `${clientInfo?.name || 'לקוחה'} ביטלה את התור ל-${dateStr} בשעה ${timeStr}`,
+      });
+    }
+
     return res.json({ message: 'התור בוטל' });
   } catch (err) {
     console.error(err);

@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { api } from '../lib/api.js';
+import { usePushNotifications } from '../hooks/usePushNotifications.js';
 
 function getLastTechId() {
   try { return localStorage.getItem('naily_last_tech') || null; } catch { return null; }
@@ -30,6 +31,7 @@ function formatTime(timeStr) {
 
 export default function ClientProfilePage() {
   const navigate = useNavigate();
+  usePushNotifications(localStorage.getItem('naily_client_token'));
   const [profile, setProfile] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');

@@ -6,6 +6,7 @@ import AppointmentCard from '../components/AppointmentCard.jsx';
 import NavBar from '../components/NavBar.jsx';
 import { useSubscription } from '../hooks/useSubscription.js';
 import SubscriptionModal from '../components/SubscriptionModal.jsx';
+import { usePushNotifications } from '../hooks/usePushNotifications.js';
 
 function localISO(date = new Date()) {
   return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
@@ -70,6 +71,7 @@ export default function DashboardPage() {
   const { user } = useAuth();
   const navigate = useNavigate();
   const { status: subStatus, loading: subLoading, isBlocked } = useSubscription();
+  usePushNotifications(localStorage.getItem('naily_token'));
   const [trialBannerDismissed, setTrialBannerDismissed] = useState(false);
 
   const todayStr = localISO();
